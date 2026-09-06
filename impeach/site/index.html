@@ -3,31 +3,42 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' 'unsafe-inline'; frame-src 'self'; img-src data:">
 <title>Impeach: cross-examine what an agent said it did</title>
+<meta name="description" content="Impeach cross-examines what an AI coding agent claimed it did against the record of what it actually did.">
+<link rel="preload" href="fonts/jetbrains-mono-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/fraunces-var.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css">
-<style>
-  .title { font-size: 40px; font-weight: 600; margin: 0 0 12px; padding: 0; border: 0; }
-  dl { margin: 0; }
-  dt { font-weight: 600; margin-top: 10px; }
-  dd { margin: 2px 0 0 0; color: var(--ink-2); }
-  iframe { width: 100%; height: 900px; border: 1px solid var(--rule); background: var(--paper); }
-  ul { padding-left: 22px; }
-  li { margin-bottom: 6px; }
-  .lede { max-width: 72ch; }
-</style>
 </head>
 <body>
 <main>
 
-<section>
-  <h1 class="title">Impeach</h1>
-  <p class="lede">Impeach cross-examines what an AI coding agent claimed it did against the
-  record of what it actually did. It runs as a plugin for the Entire CLI, reads the
-  checkpoint's tool log and the entity-level diff from Entire Graph, and gives every claim a
-  verdict with the evidence attached.</p>
-</section>
+<!-- ==================================================== 1. light table -->
+<section class="hero" id="hero">
+  <div class="hero-rail top"><p class="wordmark">Impeach</p></div>
 
+  <canvas id="table" role="img"
+    aria-label="A sheet of paper on a light table. The printed testimony reads: Tests, pytest tests slash test_api.py from impeach slash fixtures slash app, 4 passed. Under the paper the record shows one command that passed and a rerun reporting 3 new failures, and the verdict is impeached, contradicted by rerun."></canvas>
+
+  <div class="hero-inner">
+    <p class="label">Testimony</p>
+    <p class="testimony">&ldquo;Tests &mdash; `./.venv/bin/python -m pytest tests/test_api.py` from `impeach/fixtures/app`: 4 passed.&rdquo;</p>
+
+    <p class="label">Record</p>
+    <ol class="record" id="record">
+      <li>command <span class="mono">pytest tests/test_api.py</span> pass, exit 0</li>
+      <li class="bleeds">rerun <span class="mono">3 new failures in tests/test_rounding.py and tests/test_service.py</span></li>
+    </ol>
+
+    <p><span class="verdict" id="verdict">Impeached: contradicted by rerun.</span></p>
+  </div>
+
+  <div class="hero-rail bottom"><p class="hero-hint">Move the light. The record is under the paper.</p></div>
+
+  <!-- The report's own lead-impeachment block, lifted byte for byte. It is
+       the screen reader copy, the no-JavaScript layer, and what
+       internal/report/site_test.go compares against, so the page and the
+       report cannot drift into disagreeing about what was found. -->
+  <div class="sr-only">
 <section id="lead">
   <h2>Lead impeachment</h2>
   
@@ -44,8 +55,16 @@
     <p class="verdict-line"><span class="v-impeached">Impeached</span>: contradicted by rerun.</p>
   
 </section>
+  </div>
+</section>
 
-<section>
+<!-- ================================================= 2. what Impeach is -->
+<section class="band">
+  <h2 class="ruled">What Impeach is</h2>
+  <p class="lede">Impeach cross-examines what an AI coding agent claimed it did against the
+  record of what it actually did. It runs as a plugin for the Entire CLI, reads the
+  checkpoint's tool log and the entity-level diff from Entire Graph, and gives every claim a
+  verdict with the evidence attached.</p>
   <p class="lede">This is a real report from the fixture app in this repository, produced by
   replaying a recorded audit with no network and no agent. The transcript said the tests
   passed, and it was telling the truth: one of four test files ran, it went green, and the
@@ -53,29 +72,75 @@
   change was still broken. That is the everyday case.</p>
 </section>
 
-<section>
-  <h2>What a verdict means</h2>
-  <dl>
-    <dt>Corroborated</dt>
-    <dd>The record supports the claim, and the channel it rests on was intact.</dd>
-    <dt>Impeached</dt>
-    <dd>The record contradicts the claim, with a reason code: stale, scope mismatch,
-    contradicted by output or rerun, callers exist, signature changed, not in diff,
-    never read.</dd>
-    <dt>Uncorroborated</dt>
-    <dd>The evidence channel was readable and held nothing either way.</dd>
-    <dt>Unverifiable</dt>
-    <dd>The channel is missing, redacted or partial. Missing data is a state, never an
-    error, and a redacted channel can never corroborate: what was removed could be exactly
-    what would have contradicted the claim.</dd>
+<!-- ================================================== 3. context ledger -->
+<section class="band" id="ledger-section">
+  <h2 class="ruled">What was known</h2>
+
+  <div class="tally">
+    <span class="tally-count" id="tally">3 corroborated</span>
+    <span class="muted">A redacted channel can still impeach. It can never corroborate.</span>
+  </div>
+
+  <div class="ledger" id="ledger">
+    <div class="chan" data-channel="tool-log">
+      <span class="chan-name">Tool log</span>
+      <span class="chan-bar" aria-hidden="true"></span>
+      <span class="chan-state" data-state>present</span>
+    </div>
+    <div class="chan">
+      <span class="chan-name">Entity diff</span>
+      <span class="chan-bar" aria-hidden="true"></span>
+      <span class="chan-state">present</span>
+    </div>
+    <div class="chan">
+      <span class="chan-name">Impact</span>
+      <span class="chan-bar" aria-hidden="true"></span>
+      <span class="chan-state">present</span>
+    </div>
+    <div class="chan">
+      <span class="chan-name">Rerun</span>
+      <span class="chan-bar" aria-hidden="true"></span>
+      <span class="chan-state">present</span>
+    </div>
+  </div>
+
+  <p class="lede">Missing data is a state, never an error, and a redacted channel can never
+  corroborate: what was removed could be exactly what would have contradicted the claim.</p>
+</section>
+
+<!-- =============================================== 4. what a verdict is -->
+<section class="band">
+  <h2 class="ruled">What a verdict means</h2>
+  <dl class="verdicts">
+    <div>
+      <dt class="v-corroborated">Corroborated</dt>
+      <dd>The record supports the claim, and the channel it rests on was intact.</dd>
+    </div>
+    <div>
+      <dt class="v-impeached">Impeached</dt>
+      <dd>The record contradicts the claim, with a reason code: stale, scope mismatch,
+      contradicted by output or rerun, callers exist, signature changed, not in diff,
+      never read.</dd>
+    </div>
+    <div>
+      <dt class="v-uncorroborated">Uncorroborated</dt>
+      <dd>The evidence channel was readable and held nothing either way.</dd>
+    </div>
+    <div>
+      <dt class="v-unverifiable">Unverifiable <span class="hatch-swatch" aria-hidden="true"></span></dt>
+      <dd>The channel is missing, redacted or partial. Missing data is a state, never an
+      error, and a redacted channel can never corroborate: what was removed could be exactly
+      what would have contradicted the claim.</dd>
+    </div>
   </dl>
   <p class="lede">A fifth row type, unrequested, flags added or signature-changed symbols
   whose names appear in no prompt in the session. That is name matching only and never uses
   a model.</p>
 </section>
 
-<section>
-  <h2>What gets checked</h2>
+<!-- ================================================ 5. what gets checked -->
+<section class="band">
+  <h2 class="ruled">What gets checked</h2>
   <div class="scroll">
     <table>
       <caption>The four claim families and the evidence each rests on.</caption>
@@ -108,8 +173,18 @@
   </div>
 </section>
 
-<section>
-  <h2>Install and run</h2>
+<!-- ================================================ 6. it runs like this -->
+<section class="band">
+  <h2 class="ruled">It runs like this</h2>
+  <div class="scroll"><pre id="term" aria-label="Terminal transcript of an Impeach run ending in exit code 2">entire impeach 01M1TET4N33VMY0DTHNZKV5HT9 --repo . --fail-on impeached
+
+VERDICT    FAMILY     CLAIM                                 REASON                 RERUN
+impeached  execution  "... pytest tests/test_api.py ...      contradicted by rerun  new failures
+                       4 passed."
+
+exit 2</pre></div>
+
+  <h2 class="ruled">Install and run</h2>
   <div class="scroll"><pre>git clone https://github.com/snowhiteohno/cli.git
 cd cli/impeach
 mkdir -p ~/.local/share/entire/plugins/bin
@@ -118,10 +193,8 @@ go build -o ~/.local/share/entire/plugins/bin/entire-impeach ./cmd/entire-impeac
   plugin. Works offline. No model calls unless you pass <span class="mono">--model</span>,
   and none at all if the repository commits
   <span class="mono">"sensitive": true</span>.</p>
-</section>
 
-<section>
-  <h2>Reproduce the demo</h2>
+  <h2 class="ruled">Reproduce the demo</h2>
   <div class="scroll"><pre>git clone https://github.com/snowhiteohno/cli.git &amp;&amp; cd cli
 git fetch origin 'refs/entire/*:refs/entire/*'
 entire impeach 01M1TET4N33VMY0DTHNZKV5HT9 --repo . --fail-on impeached
@@ -139,17 +212,30 @@ entire impeach 01M1TJCCYXR7ZZTK1H8167G249 --repo .</pre></div>
   in three real audits is committed, so the whole pipeline replays offline.</p>
 </section>
 
-<section>
-  <h2>The full sample report</h2>
+<!-- ====================================================== 7. the numbers -->
+<section class="band">
+  <h2 class="ruled">The numbers</h2>
+  <div class="figures" id="figures">
+    <div><span class="fig-n" data-to="327">327</span><span class="fig-label">Go tests</span></div>
+    <div><span class="fig-n" data-to="25">25</span><span class="fig-label">pytest tests in the fixture app</span></div>
+    <div><span class="fig-n" data-to="3">3</span><span class="fig-label">real audits replayed offline</span></div>
+    <div><span class="fig-n" data-to="6">6</span><span class="fig-label">false positives found and fixed</span></div>
+  </div>
+</section>
+
+<!-- ============================================ 8. the full sample report -->
+<section class="band">
+  <h2 class="ruled">The full sample report</h2>
   <p class="lede"><a href="sample/impeach.html">Open it in a new tab</a>, or read it below.
   It works with JavaScript disabled: every evidence panel is in the markup and open by
   default.</p>
-  <iframe src="sample/impeach.html" title="Sample Impeach report" sandbox loading="lazy"></iframe>
+  <iframe class="report-frame" src="sample/impeach.html" title="Sample Impeach report" sandbox loading="lazy"></iframe>
 </section>
 
-<section>
-  <h2>Limitations</h2>
-  <ul>
+<!-- ====================================================== 9. limitations -->
+<section class="band">
+  <h2 class="ruled">Limitations</h2>
+  <ul class="limits">
     <li>Claim detection is pattern based. Vaguely phrased claims are missed. A missed claim
     is silent, not a false one, which is the deliberate direction to fail in.</li>
     <li>Six false positives were found and fixed during the build, every one of them by
@@ -175,12 +261,14 @@ entire impeach 01M1TJCCYXR7ZZTK1H8167G249 --repo .</pre></div>
   </ul>
 </section>
 
-<footer>
+<!-- ========================================================== 10. footer -->
+<footer class="band">
   <p>Built on the Entire ecosystem. The source, the checkpoints and the session record are
   all in <a href="https://github.com/snowhiteohno/cli">the repository</a>. This page makes no
   network requests and carries no analytics.</p>
 </footer>
 
 </main>
+<script src="site.js"></script>
 </body>
 </html>

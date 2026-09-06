@@ -1,17 +1,52 @@
-/* Tokens from docs/FRONTEND_SPEC.md. The design reads as a case file, not a
-   dashboard: text does the work and colour is spent on verdicts only. */
+/* Impeach landing page.
+ *
+ * The tokens from the report are extended here, not replaced, so the page and
+ * the report share one voice. The palette is white paper and near-black ink
+ * because the product is about documents.
+ *
+ * Two families are self hosted and committed under fonts/. There are no
+ * network requests of any kind.
+ */
+
+@font-face {
+  font-family: "Fraunces";
+  src: url("fonts/fraunces-var.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-stretch: 100%;
+  font-display: swap;
+  size-adjust: 100%;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("fonts/jetbrains-mono-var.woff2") format("woff2-variations");
+  font-weight: 100 800;
+  font-display: swap;
+  size-adjust: 100%;
+}
+
 :root {
+  /* From the report. Unchanged, deliberately. */
   --paper: #FFFFFF;
   --ink: #1C1B1A;
   --ink-2: #5B5854;
   --rule: #D9D6D0;
   --corroborated: #1F6B3A;
-  --impeached: #8C1D18;
   --uncorroborated: #4A5568;
   --unverifiable: #8A8F98;
   --focus: #1A3D6B;
+
+  /* New, for the light table. */
+  --lamp: #FFF4DC;
+  --record-ink: #2B4A7A;
+  --bleed: #8C1D18;
+
   --sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --display: "Fraunces", Georgia, "Times New Roman", serif;
+
+  --measure: 68ch;
+  --col: 880px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -21,210 +56,410 @@
     --ink-2: #A9A6A0;
     --rule: #33363B;
     --corroborated: #4FA86E;
-    --impeached: #D9534F;
     --uncorroborated: #9AA5B8;
     --unverifiable: #8A8F98;
     --focus: #7FA6DE;
+    /* The lamp stays warm. In dark mode the table reads as a lit slab in a
+       dark room, which is the correct reading. */
+    --lamp: #FFF4DC;
+    --record-ink: #8FB0E0;
+    --bleed: #D9534F;
   }
 }
 
 * { box-sizing: border-box; }
 
+html { -webkit-text-size-adjust: 100%; }
+
 body {
   margin: 0;
-  padding: 24px;
   background: var(--paper);
   color: var(--ink);
-  font: 400 15px/1.55 var(--sans);
+  font: 400 15px/1.6 var(--sans);
+  font-synthesis-weight: none;
 }
 
-main { max-width: 880px; margin: 0 auto; }
+main { display: block; }
 
-section { margin-bottom: 48px; }
+/* Every section shares one column, left aligned. The hero is the exception
+   and runs edge to edge. */
+.band {
+  max-width: var(--col);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+section { padding-block: 56px; }
 
 h1, h2 {
-  font-size: 22px;
-  font-weight: 600;
-  margin: 0 0 12px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--rule);
+  font-family: var(--display);
+  font-variation-settings: "opsz" 144;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  margin: 0 0 18px;
 }
 
-h1 { font-size: 22px; }
+h1 { font-size: 40px; line-height: 1.1; }
+h2 { font-size: 22px; line-height: 1.25; }
 
-p { max-width: 72ch; margin: 0 0 10px; }
+/* The rule under a heading is the only decoration on the page. */
+.ruled { position: relative; padding-bottom: 10px; }
+.ruled::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 1px;
+  background: var(--rule);
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+p { margin: 0 0 14px; max-width: var(--measure); }
+.lede { font-size: 15px; }
+.muted { color: var(--ink-2); }
+
+a { color: var(--focus); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:hover { text-decoration-thickness: 2px; }
+
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
 code, pre, .mono { font-family: var(--mono); }
+.mono { font-size: 0.94em; }
 
-a { color: var(--focus); }
-
-:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-}
-
-.meta { color: var(--ink-2); font-size: 13px; margin-bottom: 4px; }
-
-.label {
-  color: var(--ink-2);
-  font-size: 13px;
-  margin: 0 0 4px;
-}
-
-/* The lead impeachment: testimony above, record below. The one memorable
-   element on the page. */
-.testimony {
-  font-family: var(--mono);
-  font-size: 28px;
-  line-height: 1.3;
-  margin: 0 0 4px;
-  max-width: none;
-}
-
-.turn { font-size: 13px; color: var(--ink-2); font-family: var(--sans); }
-
-.record { margin: 0 0 12px; padding-left: 22px; font-size: 15px; }
-.record li { margin-bottom: 4px; }
-.record .mono { font-size: 13px; }
-
-.verdict-line { font-size: 15px; }
-
-/* Verdict colour appears as the word itself, a 4px left border on an evidence
-   panel, and the counts in the summary strip. Never as a fill behind text. */
-.v-corroborated { color: var(--corroborated); font-weight: 600; }
-.v-impeached { color: var(--impeached); font-weight: 600; }
-.v-uncorroborated { color: var(--uncorroborated); font-weight: 600; }
-.v-unverifiable { color: var(--unverifiable); font-weight: 600; }
-
-.strip { font-size: 15px; }
-.strip button {
-  font: inherit;
-  color: var(--ink);
-  background: none;
-  border: 0;
-  padding: 0;
-  margin-right: 16px;
-  cursor: pointer;
-}
-.strip button:hover { text-decoration: underline; }
-.strip button[aria-pressed="true"] { font-weight: 600; }
-.strip button[aria-pressed="true"].f-corroborated { color: var(--corroborated); }
-.strip button[aria-pressed="true"].f-impeached { color: var(--impeached); }
-.strip button[aria-pressed="true"].f-uncorroborated { color: var(--uncorroborated); }
-.strip button[aria-pressed="true"].f-unverifiable { color: var(--unverifiable); }
-
-.controls { margin-bottom: 10px; }
-.controls button {
-  font: inherit;
-  font-size: 13px;
-  color: var(--focus);
-  background: none;
-  border: 0;
-  padding: 0;
-  margin-right: 14px;
-  cursor: pointer;
-  text-decoration: underline;
-}
-
-table { border-collapse: collapse; width: 100%; font-size: 13px; }
-caption { text-align: left; color: var(--ink-2); font-size: 13px; padding-bottom: 8px; }
-th, td { text-align: left; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
-/* Symbol names and paths are long. Wrapping them keeps the last columns on
-   screen instead of pushing Severity out of the container. */
-td.mono { overflow-wrap: anywhere; }
-th { font-weight: 600; }
-
-/* Wide content scrolls inside its own container so the page never scrolls
+/* Wide content scrolls inside its own container. The page body never scrolls
    sideways. */
 .scroll { overflow-x: auto; }
 
-.rows { border-top: 1px solid var(--rule); }
-
-details { border-bottom: 1px solid var(--rule); }
-
-summary {
-  display: grid;
-  grid-template-columns: 8.5rem 6rem 1fr 10rem 7rem 3rem;
-  gap: 10px;
-  padding: 8px 0;
-  cursor: pointer;
+pre {
+  font-family: var(--mono);
   font-size: 13px;
-  align-items: start;
+  line-height: 1.6;
+  margin: 0 0 14px;
+  padding: 14px 16px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  overflow-x: auto;
+  max-width: var(--measure);
 }
 
-.colhead {
-  display: grid;
-  grid-template-columns: 8.5rem 6rem 1fr 10rem 7rem 3rem;
-  gap: 10px;
-  padding: 6px 0;
-  font-size: 13px;
-  font-weight: 600;
-  border-bottom: 1px solid var(--rule);
+/* Visually hidden but present for screen readers and for search. */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
-summary::-webkit-details-marker { display: none; }
-summary::marker { content: ""; }
+/* ---------------------------------------------------------------- hero */
 
-/* The claim is never truncated here. Truncation is for the terminal only. */
-.claim { font-family: var(--mono); overflow-wrap: anywhere; }
+/* Reserved at 100svh so nothing shifts while the font loads or the canvas
+   initialises. */
+.hero {
+  position: relative;
+  min-height: 100svh;
+  padding: 0;
+  display: grid;
+  align-content: center;
+  overflow: hidden;
+  /* The paper surface. In the WebGL path the canvas paints over this; in the
+     fallback path this is the paper. */
+  background: var(--paper);
+}
 
-.reason, .rerun, .family, .turncell { color: var(--ink-2); }
+.hero canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
 
-/* Colour alone must not carry meaning, so unverifiable also carries a hatch
-   that survives greyscale and print. */
-.hatched {
+/* Everything readable sits above the canvas as real text. Ink on paper. */
+.hero-inner {
+  position: relative;
+  z-index: 1;
+  max-width: var(--col);
+  margin: 0 auto;
+  padding: 0 24px;
+  width: 100%;
+}
+
+/* The hero has one left edge. The wordmark and the hint sit in the same
+   column as the testimony rather than against the viewport. */
+.hero-rail {
+  position: absolute;
+  left: 0; right: 0;
+  max-width: var(--col);
+  margin: 0 auto;
+  padding: 0 24px;
+  z-index: 2;
+  pointer-events: none;
+}
+.hero-rail.top { top: 28px; }
+.hero-rail.bottom { bottom: 28px; }
+
+.wordmark {
+  z-index: 2;
+  font-family: var(--display);
+  font-variation-settings: "opsz" 144;
+  font-weight: 400;
+  font-size: 40px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  margin: 0;
+  color: var(--ink);
+}
+
+.hero-hint {
+  margin: 0;
+  color: var(--ink-2);
+  max-width: 46ch;
+}
+
+.label {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin: 0 0 6px;
+}
+
+/* The testimony. Printed, selectable, present from the first paint. */
+.testimony {
+  font-family: var(--mono);
+  font-size: 34px;
+  line-height: 1.25;
+  font-weight: 400;
+  margin: 0 0 26px;
+  max-width: 34ch;
+  color: var(--ink);
+}
+
+/* The record, beneath the paper. In the fallback path it is real text at low
+   opacity, masked by the lamp. */
+.record {
+  list-style: none;
+  counter-reset: rec;
+  margin: 0 0 26px;
+  padding: 0;
+  max-width: var(--measure);
+}
+
+.record li {
+  counter-increment: rec;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--record-ink);
+  padding-left: 26px;
+  position: relative;
+}
+
+/* A numbered marker, because the record is an actual sequence. */
+.record li::before {
+  content: counter(rec);
+  position: absolute;
+  left: 0;
+  color: var(--record-ink);
+  opacity: 0.7;
+}
+
+.record li.bleeds { color: var(--bleed); }
+
+/* The verdict. It lands once, and never replays. */
+/* The landed state is the default, so a reader with JavaScript disabled sees
+   the verdict. Script opts into staging it and then animating in. Hiding it
+   by default would mean the most important word on the page depends on JS. */
+.verdict {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--bleed);
+  margin: 0;
+  display: inline-block;
+  transform-origin: left center;
+  transform: rotate(-1.5deg) scale(1);
+  opacity: 1;
+  text-shadow: 0 0 0.6px currentColor;
+}
+
+/* Applied by script only. */
+.verdict.staged {
+  opacity: 0;
+  transform: rotate(-3deg) scale(1.08);
+}
+
+.verdict.landed {
+  opacity: 1;
+  transform: rotate(-1.5deg) scale(1);
+  transition: opacity 220ms ease-out, transform 220ms ease-out;
+}
+
+@media (max-width: 720px) {
+  .testimony { font-size: 22px; max-width: none; }
+  .wordmark { font-size: 30px; }
+}
+
+/* Reduced motion is a kill switch, not a slowdown. Everything sits in its
+   final state. */
+@media (prefers-reduced-motion: reduce) {
+  /* A kill switch, not a slowdown. Every scene sits in its final state. */
+  .verdict,
+  .verdict.staged,
+  .verdict.landed {
+    opacity: 1;
+    transform: rotate(-1.5deg) scale(1);
+    transition: none;
+  }
+  .ruled::after { transform: scaleX(1); transition: none; }
+}
+
+/* ------------------------------------------------------- context ledger */
+
+.ledger { display: grid; gap: 10px; max-width: var(--measure); margin: 0 0 20px; }
+
+.chan {
+  display: grid;
+  grid-template-columns: 11rem 1fr 6.5rem;
+  align-items: center;
+  gap: 12px;
+}
+
+.chan-name { font-size: 15px; }
+
+.chan-bar {
+  position: relative;
+  height: 28px;
+  border: 1px solid var(--rule);
+  background: color-mix(in srgb, var(--corroborated) 18%, transparent);
+  overflow: hidden;
+}
+
+/* The hatch, same idea as the report's unverifiable rows, so the two
+   surfaces agree on what "cannot be relied on" looks like. */
+.chan-bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0;
   background-image: repeating-linear-gradient(
     45deg, transparent, transparent 4px,
-    color-mix(in srgb, var(--unverifiable) 22%, transparent) 4px,
-    color-mix(in srgb, var(--unverifiable) 22%, transparent) 8px);
+    color-mix(in srgb, var(--unverifiable) 30%, transparent) 4px,
+    color-mix(in srgb, var(--unverifiable) 30%, transparent) 8px);
 }
 
-.evidence {
-  border-left: 4px solid var(--rule);
-  padding: 8px 0 12px 14px;
-  margin-bottom: 8px;
+/* The redaction. A solid bar of ink sweeps across, with a ragged leading
+   edge, and what is under it is unreadable rather than merely dimmed. */
+.chan-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--ink);
+  transform: translateX(-101%);
+  clip-path: polygon(0 0, 97% 0, 100% 34%, 98% 68%, 100% 100%, 0 100%);
 }
-.evidence.e-corroborated { border-left-color: var(--corroborated); }
-.evidence.e-impeached { border-left-color: var(--impeached); }
-.evidence.e-uncorroborated { border-left-color: var(--uncorroborated); }
-.evidence.e-unverifiable { border-left-color: var(--unverifiable); }
 
-.evidence ul { list-style: none; padding: 0; margin: 8px 0 0; }
-.evidence li { margin-bottom: 8px; font-size: 13px; }
-.etype { color: var(--ink-2); }
+.chan.redacted .chan-bar { background: transparent; }
+.chan.redacted .chan-bar::before { opacity: 1; }
+.chan.redacted .chan-bar::after { transform: translateX(0); }
 
-/* An output excerpt scrolls sideways and never wraps, so a runner's columns
-   stay aligned. */
-pre {
-  font-size: 13px;
-  margin: 4px 0;
-  padding: 6px 8px;
+.chan-state { font-family: var(--mono); font-size: 13px; color: var(--ink-2); text-align: right; }
+.chan.redacted .chan-state { color: var(--bleed); font-weight: 700; }
+
+.tally { display: flex; align-items: baseline; gap: 14px; margin: 0 0 18px; flex-wrap: wrap; }
+
+.tally-count {
+  font-family: var(--display);
+  font-variation-settings: "opsz" 144;
+  font-weight: 400;
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 720px) {
+  /* Label above the bar, so nothing is squeezed. */
+  .chan { grid-template-columns: 1fr 6.5rem; grid-template-areas: "name state" "bar bar"; }
+  .chan-name { grid-area: name; }
+  .chan-state { grid-area: state; }
+  .chan-bar { grid-area: bar; }
+}
+
+/* ------------------------------------------------------------- verdicts */
+
+.verdicts { display: grid; grid-template-columns: 1fr 1fr; gap: 22px 32px; margin: 0 0 18px; max-width: var(--col); }
+@media (max-width: 720px) { .verdicts { grid-template-columns: 1fr; } }
+
+.verdicts dt {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 15px;
+  margin: 0 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.verdicts dd { margin: 0; color: var(--ink-2); max-width: 46ch; }
+
+.v-corroborated { color: var(--corroborated); }
+.v-impeached { color: var(--bleed); }
+.v-uncorroborated { color: var(--uncorroborated); }
+.v-unverifiable { color: var(--unverifiable); }
+
+/* Colour never carries meaning alone. Unverifiable gets the hatch too. */
+.hatch-swatch {
+  width: 24px; height: 24px;
   border: 1px solid var(--rule);
-  overflow-x: auto;
-  white-space: pre;
+  background-image: repeating-linear-gradient(
+    45deg, transparent, transparent 3px,
+    color-mix(in srgb, var(--unverifiable) 45%, transparent) 3px,
+    color-mix(in srgb, var(--unverifiable) 45%, transparent) 6px);
+  flex: none;
 }
 
-.tokens { color: var(--ink-2); font-size: 13px; }
+/* ---------------------------------------------------------------- table */
 
-/* Incomplete context is a caveat on every verdict below it, so it reads in
-   the uncorroborated colour rather than as ordinary secondary text. It is not
-   a fill: the colour is on the words. */
-.incomplete { color: var(--uncorroborated); font-weight: 600; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+caption { text-align: left; color: var(--ink-2); font-size: 13px; padding-bottom: 10px; }
+th, td { text-align: left; padding: 9px 12px 9px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-weight: 600; }
+tbody tr:hover { background: color-mix(in srgb, var(--rule) 30%, transparent); }
 
-footer { color: var(--ink-2); font-size: 13px; border-top: 1px solid var(--rule); padding-top: 12px; }
-footer p { max-width: 72ch; }
+/* --------------------------------------------------------------- numbers */
 
-@media (max-width: 620px) {
-  summary { grid-template-columns: 1fr; gap: 2px; }
-  .colhead { display: none; }
-  .testimony { font-size: 20px; }
+.figures { display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; max-width: var(--col); }
+@media (max-width: 720px) { .figures { grid-template-columns: 1fr 1fr; gap: 24px; } }
+
+.fig-n {
+  font-family: var(--display);
+  font-variation-settings: "opsz" 144;
+  font-weight: 400;
+  font-size: 48px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  display: block;
+}
+.fig-label { color: var(--ink-2); font-size: 13px; display: block; margin-top: 6px; max-width: 22ch; }
+
+/* --------------------------------------------------------------- iframe */
+
+/* Height reserved so the page does not shift when it loads. */
+.report-frame {
+  width: 100%;
+  height: 900px;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  display: block;
 }
 
-@media print {
-  body { padding: 0; color: #000; background: #fff; }
-  .controls, .strip button { display: none; }
-  main { max-width: 100%; }
-  details { break-inside: avoid; }
-  details[open] > summary ~ * { display: block; }
-  pre { white-space: pre-wrap; }
-}
+/* ----------------------------------------------------------- limitations */
+
+.limits { padding-left: 22px; max-width: var(--measure); }
+.limits li { margin-bottom: 10px; }
+
+footer { border-top: 1px solid var(--rule); padding: 28px 0 56px; }
+footer p { color: var(--ink-2); }

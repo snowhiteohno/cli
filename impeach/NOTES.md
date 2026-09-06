@@ -1206,3 +1206,35 @@ complained about unresolvable cache paths. `cache: false` says the same thing
 without the noise. The remaining annotation is GitHub deprecating Node 20 in
 its own actions, which is not ours to fix without pinning versions that may
 not exist yet.
+
+## A false claim in the requirements, found by auditing them
+
+Asked what was left, and checked rather than recalled. The check found the
+worst remaining item was in `docs/PRD.md` itself.
+
+The "90-second demo" section described a six-row table with rows for
+"No other callers are affected", "Added `test_refund_rounding`", "Verified the
+migration path", and an unrequested `_legacy_shim`. None of those exist. The
+real artifact produces one impeached row on the first demo checkpoint and
+four rows plus three unrequested symbols on the second. The symbols named
+were never built.
+
+It was a design sketch that survived into the requirements as though it were a
+fact. Two smaller claims in that same section had already been corrected, the
+test command and "two new failures", and the surrounding paragraph was not
+read closely enough at the time. This is precisely the category of error the
+tool reports on, sitting in the document that specifies the tool, which is
+worth recording plainly rather than fixing quietly.
+
+Rewritten to describe what the tool actually prints, with the counts and the
+exit code verified against a live run afterwards rather than transcribed from
+memory. The section now also states what the demo is not: there is no single
+table with one row of every verdict, and reaching one needs either a seeded
+transcript or an agent told to lie. The correction itself is left in the
+document, because deleting the wrong version would remove the evidence that
+it was ever wrong.
+
+Also documented the six flags that existed but appeared nowhere in the command
+surface: `--record`, `--replay`, `--scrub`, `--repo`, `--keep-worktrees` and
+`--version`. A re-run of the audit now reports no drift in either direction,
+17 flags documented and 17 implemented.

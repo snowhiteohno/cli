@@ -97,20 +97,96 @@ entire impeach <checkpoint-id | commit-ish> [flags]
   --model-turns N     cap on assistant turns sent to --model (default 20)
   --adapter auto|claude-code   transcript adapter; auto detects from the checkpoint
   --no-rerun          skip graph verify
+
+Fixture and utility flags, used by the recorded scenarios and the tests:
+
+  --record DIR        record every external call to DIR, turning a real audit into
+                      a replayable scenario
+  --replay DIR        replay a recorded scenario instead of running anything; needs
+                      no Entire, no git and no agent
+  --scrub             scrub absolute paths and identities out of a recording
+                      (default true, since recordings are committed)
+  --repo PATH         repository to audit; defaults to ENTIRE_REPO_ROOT, then the
+                      current repository
+  --keep-worktrees    leave the temporary worktrees in place for inspection
+  --version           print the version and exit
 ```
 
 Exit codes: 0 completed; 2 the `--fail-on` condition was met; 1 runtime error.
 
 ## The 90-second demo
 
-1. `entire impeach a1b2c3d4e5f6 --test "pytest -q --tb=no -rA"` on a checkpoint from the fixture app. The extra flags are required, not cosmetic: with a bare `pytest -q` the `graph verify` parser does not engage and the rerun degrades to an exit code with no test ids.
-2. The table shows six rows. Row one, impeached: "All tests pass." Evidence: `pytest tests/test_api.py` ran at 10:42 (one of four test files, scope mismatch); `service.py` was edited at 10:51 and no test ran after that (stale); rerun now: three new failures, in `tests/test_service.py` and `tests/test_rounding.py`.
-3. Row two, impeached: "No other callers are affected." Evidence: `graph impact` shows three callers of `compute_total`, and its signature changed.
-4. Row three, corroborated: "Added `test_refund_rounding`." Evidence: `graph commit` lists it as an added function in `tests/test_refunds.py`.
-5. Row four, uncorroborated: "Verified the migration path." No command or read event matches.
-6. Unrequested section: `_legacy_shim` was added and no prompt mentions it.
-7. Open the HTML report. The lead impeachment is the hero. Every row expands to the exact commands, timestamps and outputs behind it.
-8. Closing beat: run Impeach on the checkpoint of the session that built Impeach.
+Two checkpoints, both from real captured agent sessions in this repository.
+The verdicts below are what the tool actually prints, not an illustration.
+
+**One. The claim that was true and still wrong.**
+
+```
+entire impeach 01M1TET4N33VMY0DTHNZKV5HT9 --repo . --fail-on impeached
+
+VERDICT    FAMILY     CLAIM                                    REASON                 RERUN
+impeached  execution  "... pytest tests/test_api.py ... 4      contradicted by rerun  new failures
+                       passed."
+  Re-running now shows 3 new failures.
+```
+
+An agent switched `round_money` to banker's rounding, ran only
+`tests/test_api.py`, and reported "4 passed". That was true. Re-running the
+whole suite against a baseline recorded from the parent commit finds three
+tests that used to pass and now fail, in `tests/test_rounding.py` and
+`tests/test_service.py`. Exit code 2. The claim was accurate and the change
+was still broken, which is the everyday case this exists for.
+
+**Two. The honest agent, and the other three verdicts.**
+
+```
+entire impeach 01M1TJCCYXR7ZZTK1H8167G249 --repo .
+
+VERDICT         FAMILY     CLAIM                                        REASON  RERUN
+uncorroborated  reading    "I read all three."                                  pass
+unverifiable    safety     "... refund_amount calls it positionally             pass
+                            and is unaffected ..."
+corroborated    safety     "line_subtotal to line_total, a plain               pass
+                            rename with no behaviour change."
+corroborated    execution  "tests/test_api.py passes, 8 tests ..."             pass
+
+2 corroborated   0 impeached   1 uncorroborated   1 unverifiable   3 unrequested
+```
+
+Nothing is impeached here, and that is the point worth making rather than
+hiding. This agent scoped every claim to the file it had actually run and
+volunteered which tests it had not. There was nothing to impeach. The
+uncorroborated row names nothing the record can resolve; the unverifiable one
+names a symbol Graph could not resolve; and three added test functions are
+flagged as unrequested because no prompt named them.
+
+**Three. The report.** `--out DIR` writes `impeach.json` and a
+self-contained `impeach.html`. The lead impeachment is the hero, every row
+expands to the commands and output behind it, and it reads with JavaScript
+disabled. The same page is published at
+<https://snowhiteohno.github.io/cli/>, where the landing hero is lifted from
+that report byte for byte.
+
+**Four. Replay it with nothing installed.** `cd impeach && go test -count=1
+./...` replays three real audits from committed recordings, so a reviewer can
+check the whole pipeline with no Entire, no git, no agent and no network.
+
+### What this demo is not
+
+There is no single table with one row of every verdict. Reaching that needs
+either a seeded transcript, which `fixtures/recorded/` is the place for, or an
+agent that overclaims, and an agent can only be made to overclaim by being
+told to lie. A fabricated impeachment in the demo of a tool about false claims
+is not a trade worth making, so the verdicts are spread across two real
+checkpoints instead.
+
+The corollary is the more interesting finding: this tool's headline row is
+hardest to produce exactly when the agent under audit is careful. An earlier
+draft of this section described a six-row table with symbols named
+`_legacy_shim` and `test_refund_rounding` that were never built. It was a
+design sketch that survived into the requirements as though it were a fact,
+which is the same category of error the tool reports on, and it is corrected
+here rather than quietly deleted.
 
 ## Scope
 

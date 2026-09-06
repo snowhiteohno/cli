@@ -280,3 +280,188 @@ with no checkpoint while looking like it worked. Fixed by symlinking into
 `/opt/homebrew/bin`, which is on the login PATH, and verified with
 `zsh -lc 'command -v entire'`. Anything that runs Entire from a non-login shell
 should re-check this.
+
+## End of phase 5 report
+
+Stop point reached. Phases 0 through 5 are committed, `go test ./...` is green
+at every one of them, and the table prints on the fixture app with an
+impeached row. This section is the handover: a fresh session should be able to
+reconstruct the state from the checkpoint list plus this file.
+
+### Commits
+
+```
+ab88cfb  phase 5 execution verifier, pattern extractor, table   (tests: 197)
+c46d8f1  phase 4 record layer, graph parsers, verify wrapper    (tests: 135)
+7ada18f  phase 3 Claude Code transcript adapter                 (tests: 101)
+7ce9790  phase 2 skeleton, Runner, resolve by trailer, worktrees (tests: 48)
+f672561  phase 1 step 0 probe, six open questions answered      (tests: 0 go, 18 pytest)
+458bb14  the probe session's own commit, checkpoint 01M1TET4N33VMY0DTHNZKV5HT9
+650a885  phase 0 docs, handoff, fixture app                     (tests: 0 go, 18 pytest)
+```
+
+197 Go tests plus 18 pytest tests in the fixture app. No test needs a live
+agent or a network; the transcript, Graph and verify fixtures are all replayed
+from `testdata/`.
+
+### Probe findings, in brief
+
+Full detail is at the bottom of `docs/ARCHITECTURE.md`. The six open questions
+are answered there, along with a section listing the six places the probe
+contradicted the design.
+
+1. No commit sha appears in `checkpoint list --json` or `explain --json`, so
+   resolution rests entirely on the `Entire-Checkpoint:` trailer. That path is
+   primary, not the fallback the design called it.
+2. `checkpoint explain` has more machine-readable surface than assumed:
+   `--json` metadata envelope, `--transcript` byte-identical to
+   `--raw-transcript`, and `--session-index` for multi-session checkpoints.
+3. `tool_result` carries full output, plus a structured `toolUseResult` object,
+   plus an explicit `Exit code N` line on failure. Exit status is knowable in
+   both directions, better than the design expected.
+4. `graph commit`, `graph diff` and `graph impact` all have JSON.
+   `graph verify` has none, so it is the only text parser in the build.
+5. `graph commit` distinguishes `signature_changed` from `body_changed` for
+   Python and carries both signature strings.
+6. `ENTIRE_PLUGIN_DATA_DIR` is set for unmanaged plugins too, is not
+   pre-created, and comes with `ENTIRE_CLI_VERSION` and `ENTIRE_REPO_ROOT`.
+   Confirmed twice: from `runPlugin` in the CLI source, and then empirically in
+   phase 5, when installing Impeach as a managed plugin moved the worktrees
+   into that directory with no code change.
+
+### Degradations in effect
+
+None of the six degradation rows the design anticipated apply. Tool calls and
+results are present and full, reads carry paths, timestamps are present,
+`--raw-transcript` works, `graph commit` has JSON, and Graph parses Python
+semantically.
+
+Two new degradations replace them, and both are implemented:
+
+| Degradation | Effect | Absorbed in |
+|---|---|---|
+| No commit sha in any checkpoint JSON | Resolution is trailer-only, through `git log --grep`. Ambiguity is reported, never guessed | `internal/checkpoint` |
+| `graph verify` has no JSON, and its pytest parser degrades to exit-code-only unless the command emits per-test ids | The rerun reports pass or fail with no ids, and the report names the degradation and what to change | `internal/record` |
+
+The second one has teeth, because every document in `docs/` specifies
+`--test "pytest -q"`, which is exactly the command that buys nothing.
+
+### The table
+
+Run, dispatched through the Entire CLI as a real plugin:
+
+```
+entire impeach 458bb1428 --repo . --fail-on impeached \
+  --test 'cd impeach/fixtures/app && { test -d .venv || { python3 -m venv .venv \
+    && ./.venv/bin/python -m pip install -q -r requirements.txt; }; } \
+    && ./.venv/bin/python -m pytest -q --tb=no -rA'
+```
+
+Output, trimmed to the substance:
+
+```
+Impeach 0.1.0 report for checkpoint 01M1TET4N33VMY0DTHNZKV5HT9 (commit 458bb14, parent 650a885), agent Claude Code.
+Adapter claude-code. Extractors: pattern. Rerun: yes. Model command: none.
+
+VERDICT    FAMILY     CLAIM                                          REASON                 RERUN
+impeached  execution  Tests - `pytest tests/test_api.py` ...         contradicted by rerun  new failures
+
+IMPEACHED [c1] "Tests - `./.venv/bin/python -m pytest tests/test_api.py` from `impeach/fixtures/app`: 4 passed."
+  Re-running now shows 3 new failures.
+  command  seq 12  ... pytest tests/test_api.py  ->  pass (exit 0)
+           | ============================== 4 passed in 0.00s ===========
+  rerun    new_failures  3 new failures: tests/test_rounding.py::test_round_money_negative,
+                         tests/test_rounding.py::test_round_money_two_places,
+                         tests/test_service.py::test_round_money_half_up
+           reproduce: entire graph verify --repo <data>/wt/458bb14287ec/head --test "..." --pre-edit-baseline ...
+
+0 corroborated   1 impeached   0 uncorroborated   0 unverifiable   0 unrequested
+```
+
+Exit codes verified: 2 with `--fail-on impeached` when a row is impeached, 0
+when none is, 0 with no `--fail-on`, 1 for an unresolvable checkpoint.
+
+### What turned out to be wrong in the docs
+
+Recorded here because the docs are the authority and these are corrections to
+them, not new decisions. The first six are already written into
+`docs/ARCHITECTURE.md`.
+
+1. **Checkpoint ids are 26-character ULIDs, not 12 hex characters.** The
+   Resolve section said 12-hex. Crockford base32 includes letters outside
+   `a-f`, so a hex assumption would reject every real id.
+2. **The trailer is the only checkpoint-to-commit link.** The design called it
+   the fallback and expected `checkpoint list --json` to expose the sha.
+3. **`graph verify` needs per-test ids, and every document asks for
+   `pytest -q`.** With `-q` or bare `pytest` the parser reports "output format
+   not recognised" and returns `exit-code-only` with an empty results map.
+   `-v`, or `-q --tb=no -rA`, gets 18 individual results. The PRD's demo, the
+   architecture's data flow and the frontend spec's install snippet all use the
+   degraded form.
+4. **`graph verify` exits 0 even when it reports a regression.** The exit code
+   carries no verdict; only the text does.
+5. **The transcript record vocabulary is different.** Observed types are
+   `user`, `assistant`, `attachment`, `queue-operation`, `last-prompt`. There
+   is no `system` or `summary` record, and assistant content can include
+   `thinking` blocks. Attachments are harness bookkeeping and carry no file
+   content.
+6. **Tool `file_path` inputs are absolute**, while Graph and
+   `explain --json` report repository-relative paths.
+7. **`graph impact` callee resolution can cross languages.** Asked about the
+   Python `compute_total`, it resolved the builtin `sum` to a Go function in
+   the host repository. Callers were correct, so no verdict is affected, but
+   nothing should be built on callees.
+8. **The PRD's demo numbers are illustrative, not real.** It describes two new
+   failures in `tests/test_service.py`; the real regression is three, because
+   `test_round_money_two_places` also turns on a halfway value. The demo script
+   in the PRD should be updated to the real figures before it is shown.
+9. **`entire impeach HEAD` cannot work for this build's own commits.** A fresh
+   clone carries no git hooks, so the session that wrote Impeach is not itself
+   checkpointed and its commits carry no trailer. Phase 11 asks for Impeach to
+   be run on the checkpoint of the session that built it; that will only work
+   for sessions started after `entire configure --force`, so a later phase of
+   the build needs its own captured session to audit.
+
+### Two things deliberately not done
+
+- **No `.impeach.json` at the repository root.** The security policy wants the
+  test command to come from a flag or a committed file, and the loader reads
+  the repository root, but the build may not add files outside `impeach/`. A
+  template sits at `fixtures/app/.impeach.json` for a user to copy up. Until
+  then the demo passes `--test` explicitly, which is why the demo command is
+  self-contained enough to build its own virtualenv.
+- **No `--setup` flag.** Setup reaches `graph verify` from `.impeach.json`
+  only, because the documented flag surface is fixed and the self-contained
+  `--test` command covers the demo.
+
+### State of the four boundaries
+
+- **Checkpoint reader**, `internal/checkpoint`: complete for v1. Resolve by
+  trailer or ULID, metadata envelope, transcript fetch with session index.
+- **Extractors**, `internal/claims`: execution family only. Structural, safety
+  and reading patterns are phase 6. The model extractor is phase 9.
+- **Verifiers**, `internal/verify`: execution only. The other three verifiers
+  and the unrequested detector are phase 6.
+- **Renderers**, `internal/report`: the Report struct and the table. JSON is
+  phase 7, HTML phase 8.
+
+`impeach record` and the replaying fixture scenarios are phase 7. The
+`Recording` and `Fake` halves of the Runner already exist and are tested
+round-trip, so that phase is wiring rather than design.
+
+### Environment notes a fresh session needs
+
+- `entire` is built from source at the repository root and symlinked into
+  `/opt/homebrew/bin`, which is on the login PATH. `~/.local/bin` is not, and
+  every Entire hook guards on `command -v entire`, so a symlink there makes
+  the hooks silently do nothing. That trap cost the first probe attempt.
+- `entire-impeach` is installed at
+  `~/.local/share/entire/plugins/bin/entire-impeach`. Rebuild it there after
+  any change, or `entire impeach` runs a stale binary.
+- Pushing is disabled deliberately: `origin` points at upstream
+  `entireio/cli` with its push URL set to `DISABLED-no-push`, session push is
+  off, telemetry is off. Commits are authored as
+  `Mallika <218808583+snowhiteohno@users.noreply.github.com>`, set
+  repository-local only.
+- The fixture app's virtualenv is gitignored. `sh scripts/setup.sh` rebuilds
+  it, and the demo `--test` command rebuilds it inside a worktree on its own.

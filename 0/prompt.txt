@@ -1,0 +1,7 @@
+Staged changes are ready. Commit them so the commit is captured as an Entire checkpoint.
+
+Do exactly this and nothing else:
+1. Run: git -c commit.gpgsign=false commit -m 'impeach: site copy, hero headline, stamp'
+2. Run: git log -1 --format='%H %(trailers:key=Entire-Checkpoint,valueonly)' and report it.
+
+Do not stage anything else, do not amend, do not modify any file, do not push, do not run tests.

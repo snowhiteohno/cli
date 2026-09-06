@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.10.6-nightly.202609050622.61dac01ed.0.20260905201708-3dbdf8b83c39+dirty",
+  "checkpoint_id": "01M1TJWAR63MRKCP5AMZ2NQR9H",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "impeach/cmd/entire-impeach/main.go",
+    "impeach/internal/claims/patterns.go",
+    "impeach/internal/report/report.go",
+    "impeach/internal/report/report_test.go",
+    "impeach/internal/report/table.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 2,
+    "cache_creation_tokens": 456,
+    "cache_read_tokens": 87730,
+    "output_tokens": 1230,
+    "api_call_count": 1
+  }
+}

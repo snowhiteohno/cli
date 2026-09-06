@@ -1174,3 +1174,35 @@ Actions are enabled on the fork and the token carries the `workflow` scope, so
 the file pushes and runs. Pages itself is not yet configured: the site has no
 URL until the repository's Pages source is set to GitHub Actions, which is a
 publishing act on a public repository and was left for the owner to trigger.
+
+### Pages enabled, and the site is live
+
+<https://snowhiteohno.github.io/cli/>
+
+Enabled with `gh api -X POST repos/snowhiteohno/cli/pages -f
+build_type=workflow`, which sets the source to GitHub Actions and sidesteps
+the folder restriction that made the frontend spec's `/impeach/site`
+impossible.
+
+The first run, triggered by the push that added the workflow, failed with
+"Get Pages site failed. Please verify that the repository has Pages enabled":
+the workflow existed before Pages did. Worth noting where it failed, though.
+It failed at `configure-pages`, which runs after the test steps, so the drift
+gate and the full suite had already passed. The workflow was correct; the
+repository was not configured yet.
+
+Verified after deployment rather than assumed:
+
+- All four paths serve 200: the index, the sample report, the stylesheet and
+  the sample JSON.
+- The served page carries no `/Users/` path, so the scrubber held.
+- **The live hero is byte-identical to the committed sample report's hero**,
+  862 bytes, checked by fetching the deployed page and diffing the section.
+  The drift guarantee reaches production, not just the test suite.
+
+One warning fixed on the way: `setup-go` was pointed at `impeach/go.sum`,
+which does not exist because the module is standard library only, so every run
+complained about unresolvable cache paths. `cache: false` says the same thing
+without the noise. The remaining annotation is GitHub deprecating Node 20 in
+its own actions, which is not ours to fix without pinning versions that may
+not exist yet.

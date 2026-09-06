@@ -281,14 +281,23 @@ giving different accounts of the same audit. A test asserts the byte match,
 and others assert no absolute paths, no external requests and no drift between
 `site/style.css` and `internal/report/report.css`.
 
-**It is not published yet, and that needs a decision.** The frontend spec says
-to serve it from GitHub Pages with folder `/impeach/site`, but a Pages branch
-deployment only offers `/` or `/docs` as the source folder, and `/docs` in
-this fork already holds the upstream CLI's documentation. So publishing needs
-one of: a Pages workflow under `.github/workflows`, a copy at the repository
-root or in `/docs`, or a separate repository. All three touch files outside
-`impeach/`, so none was chosen unilaterally. Until then the page is served
-locally:
+**It is live at <https://snowhiteohno.github.io/cli/>.**
+
+Published by `.github/workflows/impeach-pages.yml`, which exists because the
+frontend spec's instruction to serve from folder `/impeach/site` is not
+possible: a Pages branch deployment offers only `/` or `/docs`, and `/docs` in
+this fork already holds the upstream CLI's documentation. A Pages Actions
+workflow sidesteps the folder restriction entirely.
+
+The workflow publishes the committed site rather than building it, because
+generating the page needs a real audit and therefore the Entire CLI, the graph
+plugin and a checkpoint, none of which exist in a runner. What it does instead
+is refuse: it runs the site tests and then the whole suite before deploying,
+so a hand-edited or drifted page never ships. The deployed hero has been
+checked byte for byte against the committed sample report, so the guarantee
+holds in production and not only in the test suite.
+
+To serve it locally instead:
 
 ```
 cd impeach/site && python3 -m http.server

@@ -1,0 +1,70 @@
+{
+  "cli_version": "0.10.6-nightly.202609050622.61dac01ed.0.20260905201708-3dbdf8b83c39+dirty",
+  "checkpoint_id": "01M1TTN6DVHYNQ42TMPSMGM6S8",
+  "session_id": "6019f654-8876-4a5d-b05a-0d794dd1dc3b",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-06T07:41:51.567961Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "BUILDATHON.md",
+    "impeach/NOTES.md",
+    "impeach/README.md",
+    "impeach/internal/report/gen-site/main.go",
+    "impeach/internal/report/gen-site/template.go",
+    "impeach/internal/report/report.html.tmpl",
+    "impeach/internal/report/site_test.go",
+    "impeach/site/index.html",
+    "impeach/site/sample/impeach.html",
+    "impeach/site/sample/impeach.json",
+    "impeach/site/style.css"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-opus-5",
+  "turn_id": "25d2c2e585a8",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 2,
+    "cache_creation_tokens": 52305,
+    "cache_read_tokens": 16035,
+    "output_tokens": 180,
+    "api_call_count": 1
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-06T07:41:51.564852Z",
+    "agent_lines": 0,
+    "agent_removed": 0,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 1,
+    "total_committed": 0,
+    "total_lines_changed": 1,
+    "agent_percentage": 0,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 1684,
+      "user_lines_removed": 1,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        "BUILDATHON.md": 6,
+        "impeach/NOTES.md": 49,
+        "impeach/README.md": 39,
+        "impeach/internal/report/gen-site/main.go": 157,
+        "impeach/internal/report/gen-site/template.go": 179,
+        "impeach/internal/report/report.html.tmpl": 1,
+        "impeach/internal/report/site_test.go": 170,
+        "impeach/site/index.html": 186,
+        "impeach/site/sample/impeach.html": 556,
+        "impeach/site/sample/impeach.json": 111,
+        "impeach/site/style.css": 230
+      },
+      "user_removed_per_file": {
+        "impeach/internal/report/report.html.tmpl": 1
+      }
+    }
+  ]
+}

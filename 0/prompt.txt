@@ -1,0 +1,31 @@
+Staged changes are ready. Commit them so the commit is captured as an Entire checkpoint.
+
+Do exactly this and nothing else:
+1. Run: git -c commit.gpgsign=false commit -m 'impeach: the record reads before you touch anything
+
+The hero gated its whole point behind an interaction nobody performs. The
+record was drawn only where the lamp fell, from a floor of zero, so a reader
+who glanced at the page and scrolled saw blank paper under the word Record
+and never learned that there was a record at all.
+
+Three changes. The ink now has a floor: 0.60 for the record and 0.78 for the
+line that contradicts the testimony, so both are legible wherever the lamp
+happens to be, and the lamp deepens the ink instead of deciding whether any
+exists. The lamp itself is brighter and much wider, keyed off width rather
+than the smaller dimension, because the record lines are wide and short and
+a disc sized to the height clipped them. Its falloff exponent went below one
+so the bright core stays broad and only the rim fades, which is what a lamp
+on paper actually does.
+
+And it performs itself. An intro sweep runs on load on every device, not
+just pointerless ones, travelling across the contradicting line and settling
+on it, yielding the moment a real pointer moves and never running under
+reduced motion. The pointerless drift now waits for it rather than fighting
+it.
+
+The hint changed with the behaviour. It used to say the record was under the
+paper, which is no longer true, so it says the ink shows through and invites
+moving the light rather than requiring it.'
+2. Run: git log -1 --format='%H %(trailers:key=Entire-Checkpoint,valueonly)' and report it.
+
+Do not stage anything else, do not amend, do not modify any file, do not push, do not run tests.

@@ -46,6 +46,16 @@ forbid script elements outright, which stopped making sense once the hero
 became a WebGL scene. Both were narrowed to the property that actually
 matters rather than deleted.
 
+## Do not strip the trailing whitespace
+
+`git diff --check` reports whitespace diagnostics in `index.html` and
+`sample/impeach.html`. Leave them. The five in `index.html` are inside the
+`<section id="lead">` block, which is byte-identical to the sample report and
+tested for it, and the ones in `sample/impeach.html` are in a generated audit
+artifact. `report.html.tmpl` has none of its own: this is Go template
+execution leaving the indentation of its actions behind. Stripping either file
+breaks the drift test or edits evidence to please a linter.
+
 ## The hero content
 
 The testimony, the record lines and which line contradicts are hardcoded in

@@ -182,13 +182,19 @@ moved its worktrees into `ENTIRE_PLUGIN_DATA_DIR` with no code change.
 
 ### Final review: the whole build, cross-examined
 
-The last thing built was a review of everything built, using the tool's own
-evidence source. `entire graph diff --base 3dbdf8b --head HEAD --json` across
-the 17 commits from the fork point, with its conclusions then checked against
-git and against the test suite rather than taken on trust. That check is the
-point: a structural claim from Graph is testimony too.
+This review was run at commit `516cf70a`, using the tool's own evidence
+source: `entire graph diff --base 3dbdf8b --head HEAD --json` across the 17
+commits that existed from the fork point at that time, with its conclusions
+then checked against git and against the test suite rather than taken on
+trust. That check is the point: a structural claim from Graph is testimony
+too.
 
-Scale: 122 files touched, 115 of them parsed, 1392 entity changes.
+Every figure in this subsection is that commit's. The build continued
+afterwards, so the same command was re-run at the end and both sets are given
+below rather than leaving the older ones to be read as current.
+
+Scale at `516cf70a`: 122 files touched, 115 of them parsed, 1392 entity
+changes.
 
 **Every one of the 1392 changes is `added`.** Not one `removed`, `renamed`,
 `signature_changed` or `body_changed`. So the build is purely additive with
@@ -245,6 +251,37 @@ pytest              22 passed, 3 failed
 The 3 pytest failures are the fixture's documented seeded failures, from the
 banker's rounding change the demo checkpoint audits. The fixture README states
 which three and why. A green fixture would mean the demo had nothing to find.
+
+#### Re-run at `a58889a8`
+
+The figures above are dated, and a great deal landed after them: the HTML
+report, session mode, the model extractor, the README, the Curveball work, the
+landing page, the site rebuild and the guard fix. The same command, re-run at
+`a58889a8`:
+
+| Measure | At `516cf70a` | At `a58889a8` |
+|---|---|---|
+| Commits from the fork point | 17 | 35 |
+| Files touched | 122 | 147 |
+| Files parsed | 115 | 138 |
+| Files Graph could not parse | 7 | 9 |
+| Entity changes | 1392 | 1796 |
+
+Both commits are named rather than saying "at HEAD", because a figure about
+HEAD is false again on the next commit, which is how the first set came to sit
+here reading as current.
+
+The two further unsupported files are the committed woff2 fonts from the site
+rebuild, which is the expected answer: a font is not source. The gap symmetry
+still holds, since 147 minus 138 is 9, so nothing was silently dropped.
+
+**The conclusion is unchanged, and that is the part that matters.** All 1796
+changes are still `added`. Not one `removed`, `renamed`, `signature_changed`
+or `body_changed`. Graph still reports exactly one pre-existing file modified,
+`README.md`, carrying the single change `added section 'Impeach'`, and git
+still reports that file as the only non-added path in the range, at 4
+insertions and 0 deletions. After twice as many commits, the build is still
+purely additive with respect to the fork.
 
 What this review does not prove. It is a structural and behavioural check, not
 a correctness proof: it says the build added what it says it added, disturbed
@@ -376,51 +413,52 @@ Mirror: `entire://aws-us-east-2.entire.io/gh/snowhiteohno/cli`, mirror ID
 `01M1TKHC7813MNVG5Y543V7P83`, status ready. Clone it with
 `git clone entire://aws-us-east-2.entire.io/gh/snowhiteohno/cli`.
 
-Three checkpoints, all pushed to the fork as `refs/entire/checkpoints/**`:
+Twenty-six checkpoints are pushed to the fork as `refs/entire/checkpoints/**`.
+Every commit from `ab8ba0ee` onward carries its own in an `Entire-Checkpoint:`
+trailer, so the checkpoint list reads as the build log. Enumerate the whole set
+against the commits it belongs to with:
 
-| Checkpoint | Commit | What it proves |
-|---|---|---|
-| `01M1TJWAR63MRKCP5AMZ2NQR9H` | `ab8ba0e` | Phase 6, the pre-noon checkpoint. All four verifiers and the unrequested detector, 224 tests. Its commit message records intent, architecture, what is done, what is not, and the five open risks. |
-| `01M1TJCCYXR7ZZTK1H8167G249` | `0bd3033` | Demo checkpoint two. A real captured session that added an order-level discount and renamed `line_subtotal`. Audited, it yields corroborated, uncorroborated and unverifiable rows plus three unrequested symbols. |
-| `01M1TET4N33VMY0DTHNZKV5HT9` | `458bb14` | Demo checkpoint one. A real captured session that switched `round_money` to banker's rounding while running only `tests/test_api.py`. Audited, it yields the impeached row, by `contradicted-rerun` against three genuine new failures. |
+```
+git log --format='%h %s %(trailers:key=Entire-Checkpoint,valueonly)' 3dbdf8b..HEAD
+```
 
 Read any of them with `entire checkpoint explain <id>`, or audit one with
 `entire impeach <id>`.
 
-Commits on `main`, newest first:
+### The four moments, and the one that has no checkpoint
 
-| Commit | Checkpoint | What it proves |
+| Moment | Checkpoint | Commit | What it is |
+|---|---|---|---|
+| Initial intent and architecture | **none exists** | `650a885f` to `fe7fd964` | Phase 0 through phase 5. See below. |
+| Pre-noon | `01M1TJWAR63MRKCP5AMZ2NQR9H` | `ab8ba0ee` | Phase 6. All four verifiers and the unrequested detector, 224 tests. Its commit message records intent, architecture, what is done, what is not, and the five open risks. |
+| Curveball | `01M1TR5GCVA7ZE650KSRY2G35S` | `018ccd0b` | The privacy and completeness constraint answered: sensitive mode and the context ledger, 311 tests. The write-up of it is the next commit, `08d3144f` and `01M1TRCZFKGH7E6R95E7ZCAPJM`. |
+| Final state | `01M1TZETEKP27G5QHZXTDSVYCJ` | `729687a1` | The tip at the time of writing. Work after this line carries its own checkpoint under the same rule, so the trailer on the tip commit always names the current one. |
+
+**There is no initial-intent checkpoint, and one cannot be manufactured
+honestly.** The git hooks were installed part way through the build, so phase 0
+through phase 5 predate capture: the docs, the handoff, the Step 0 probe, the
+Runner boundary, the transcript adapter, the record layer and the first
+end-to-end path all landed without a checkpoint. Nothing in that range can be
+resolved by `entire checkpoint explain`, and back-dating one would mean
+committing the exact class of unbacked claim this tool exists to catch.
+
+What does stand in for it, without pretending to be it: those six commit
+messages carry the intent and the architecture in the same detail as the later
+ones, `impeach/NOTES.md` carries the phase reports written at the time, and
+`impeach/docs/` carries the four design documents the build was specified
+against. The reasoning is on the record. What is missing is the captured
+session, and it is missing because it was never captured.
+
+Two of the earliest checkpoints are not build-session checkpoints at all, which
+is worth stating so the list is not misread. `01M1TET4N33VMY0DTHNZKV5HT9`
+(`458bb142`) and `01M1TJCCYXR7ZZTK1H8167G249` (`0bd30333`) come from `claude -p`
+subsessions that edited the fixture app, and they are the two demo checkpoints
+the report table is produced from:
+
+| Checkpoint | Commit | What it proves |
 |---|---|---|
-| phase 5 followup | none | The fixture README stopped being true and was corrected. |
-| phase 5 report | none | The stop-point report, written so a fresh session can reconstruct the build. |
-| phase 5 | none | Execution verifier, pattern extractor and table. First end-to-end path, 197 tests. |
-| phase 4 | none | Record layer. Graph JSON parsers and the baseline-aware verify wrapper. |
-| phase 3 | none | Claude Code transcript adapter, built against the real probe transcript. |
-| phase 2 | none | Skeleton, the Runner boundary, resolve by trailer, worktrees. |
-| phase 1 | none | The Step 0 probe and the six answered questions. |
-| `458bb14` | `01M1TET4N33VMY0DTHNZKV5HT9` | The demo checkpoint. A real captured agent session that read two files, switched `round_money` to banker's rounding, ran only `tests/test_api.py`, and committed. This is the checkpoint Impeach audits. |
-| phase 0 | none | Docs, handoff and the fixture app with a green 18-test baseline. |
-
-The fork is public, which means the checkpoint refs on it are public too.
-That is a property of Entire's default storage rather than of Impeach, and it
-is the reason the committed fixtures are scrubbed of absolute paths, user
-names and author identity.
-
-An honest disclosure, since it is visible in the record and would be noticed
-anyway: **only three commits carry checkpoints.** A fresh clone carries no git
-hooks, so Entire was enabled in settings but capturing nothing until
-`entire configure --force` installed them, which happened during phase 0.
-The session that wrote Impeach had already started by then, so its commits
-carry no `Entire-Checkpoint` trailer. The three that exist all come from `claude -p`
-subsessions, which are captured because they started after the hooks were
-installed. Two of them are the demo checkpoints being cross-examined, and the
-third is the pre-noon phase 6 checkpoint.
-
-The lesson is worth stating because it is the same class of failure Impeach
-exists to catch: the hooks were installed, they ran, and they silently did
-nothing, because `entire` was on a path that login shells do not search and
-every hook guards itself with `command -v entire`. It looked like it was
-working. Nothing said otherwise.
+| `01M1TET4N33VMY0DTHNZKV5HT9` | `458bb142` | Demo checkpoint one. A real captured session that switched `round_money` to banker's rounding while running only `tests/test_api.py`. Audited, it yields the impeached row, by `contradicted-rerun` against three genuine new failures. |
+| `01M1TJCCYXR7ZZTK1H8167G249` | `0bd30333` | Demo checkpoint two. A real captured session that added an order-level discount and renamed `line_subtotal`. Audited, it yields corroborated, uncorroborated and unverifiable rows plus three unrequested symbols. |
 
 ## Setup, run and test instructions
 

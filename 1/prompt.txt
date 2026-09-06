@@ -1,0 +1,10 @@
+anything else left?
+
+---
+
+he repository is not submission-ready.
+- Blocker: full go test ./... fails. Impeach directly triggers the host CLI’s Git-metadata guard via [worktree.go (line 111)](/Users/mallikasuri/Desktop/Impeach/impeach/internal/record/worktree.go:111); it must stop independently probing .git or receive a documented policy exception. Two unrelated versioncheck tests also fail in this checkout.
+- Track 1 compliance gap: the guide requires checkpoint evidence for initial intent, pre-noon, Curveball, and final state BTW Buildathon 2026 - Participant Guide.pdf. [BUILDATHON.md (line 379)](/Users/mallikasuri/Desktop/Impeach/BUILDATHON.md:379) explicitly lists only three checkpoints. A Curveball checkpoint (01M1TR5…) and final checkpoint (01M1TYA…) exist and open correctly, but are not listed; there is no authentic initial-architecture checkpoint.
+- Submission state: current HEAD is 65d00a4, but origin/main is still 31c1fb5. The final SHA is not pushed.
+- Documentation drift: the recorded Graph review claims 17 commits / 122 files / 1,392 changes / 7 unsupported files. The actual audit at the prior shipped commit found 33 commits, 147 files, 1,778 added entities, and 9 unsupported files. Update the claims before judges see them.
+- Polish: git diff --check reports 58 trailing-whitespace diagnostics in the committed site HTML. The new docs also correctly disclose that gen-site can overwrite the hand-written landing page; that remains a real footgun.

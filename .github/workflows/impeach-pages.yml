@@ -50,7 +50,10 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: impeach/go.mod
-          cache-dependency-path: impeach/go.sum
+          # No dependency cache: the module is standard library only, so
+          # there is no go.sum and pointing at one only produces a warning
+          # about paths that cannot be resolved.
+          cache: false
 
       # Refuse to publish a page that has drifted from the report it claims to
       # show. -count=1 because a cached pass is a claim about code that was

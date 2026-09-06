@@ -47,7 +47,9 @@ func (rd Reading) Verify(c claims.Claim, r *Record) Verdict {
 			for _, p := range matched {
 				v.Evidence = append(v.Evidence, rd.readEvidence(r, p))
 			}
-			return v
+			// A reading claim rests entirely on the read events, so an
+			// incomplete read channel cannot confirm one.
+			return gate(v, r, transcript.ChannelReads)
 		}
 		// Named something resolvable and never read it.
 		if rd.anyResolvable(unmatched, r) {
@@ -68,7 +70,7 @@ func (rd Reading) Verify(c claims.Claim, r *Record) Verdict {
 				v.Status = Corroborated
 				v.Summary = fmt.Sprintf("The session read %s, which Entire Graph lists as containing a caller.", p)
 				v.Evidence = append(v.Evidence, rd.readEvidence(r, p))
-				return v
+				return gate(v, r, transcript.ChannelReads)
 			}
 		}
 		v.Status = Impeached

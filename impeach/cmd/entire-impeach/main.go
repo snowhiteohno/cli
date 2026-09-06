@@ -65,6 +65,9 @@ type options struct {
 	// enabling --model on a long session cannot quietly send a large amount
 	// of text to a third party.
 	modelTurns int
+	// sensitive forbids anything leaving the machine. It is a refusal, not a
+	// preference: with it set, --model is rejected rather than ignored.
+	sensitive bool
 }
 
 func main() {
@@ -124,6 +127,7 @@ func parseFlags(argv []string, stderr io.Writer) (*options, error) {
 	fs.StringVar(&opts.replay, "replay", "", "replay a recorded directory instead of running anything")
 	fs.BoolVar(&opts.scrub, "scrub", true, "scrub absolute paths and identities out of a recording")
 	fs.IntVar(&opts.modelTurns, "model-turns", 20, "cap on assistant turns sent to the --model command")
+	fs.BoolVar(&opts.sensitive, "sensitive", false, "refuse anything that would leave the machine; --model becomes an error")
 
 	fs.Usage = func() {
 		fmt.Fprintf(stderr, `entire impeach cross-examines an agent's claims against the record.
@@ -179,9 +183,9 @@ func validate(opts *options) error {
 		return fmt.Errorf("unknown --format %q: want table, json or html", opts.format)
 	}
 	switch opts.failOn {
-	case "", "impeached", "uncorroborated":
+	case "", "impeached", "uncorroborated", "incomplete":
 	default:
-		return fmt.Errorf("unknown --fail-on %q: want impeached or uncorroborated", opts.failOn)
+		return fmt.Errorf("unknown --fail-on %q: want impeached, uncorroborated or incomplete", opts.failOn)
 	}
 	switch opts.adapter {
 	case "auto", "claude-code":
@@ -220,6 +224,25 @@ func audit(ctx context.Context, opts *options, stdout, stderr io.Writer) error {
 		return fmt.Errorf("resolve repository path %q: %w", repo, err)
 	}
 	repo = abs
+
+	// Sensitive mode comes from the flag or from a committed .impeach.json,
+	// and is resolved before anything runs. The refusal has to happen here,
+	// ahead of the pipeline, because refusing after the first turn has been
+	// sent would be theatre.
+	cfg, cfgErr := loadConfig(repo)
+	if cfgErr != nil {
+		fmt.Fprintf(stderr, "entire-impeach: %v\n", cfgErr)
+		cfg = &config{}
+	}
+	if cfg.Sensitive {
+		opts.sensitive = true
+	}
+	if opts.sensitive && opts.model != "" {
+		return fmt.Errorf(
+			"refusing to run: --model would send assistant text to %q, and sensitive mode forbids anything leaving this machine. "+
+				"Drop --model, or drop --sensitive and remove \"sensitive\" from %s if that is really what you want",
+			opts.model, configName)
+	}
 
 	base, err := buildRunner(opts, repo)
 	if err != nil {
@@ -540,6 +563,21 @@ func assemble(res *checkpoint.Resolved, stream *transcript.Stream, rec *auditRec
 		}
 	}
 
+	// The ledger is the transcript's own account of which channels survived,
+	// plus the record layer's answer for Graph, which is not a transcript
+	// channel at all.
+	ledger := stream.BuildLedger()
+	switch {
+	case rec.Changes == nil:
+		ledger.Set(transcript.ChannelGraph, transcript.ChannelAbsent,
+			"Entire Graph produced no entity diff for this commit")
+	case len(rec.Changes.Warnings) > 0:
+		ledger.Set(transcript.ChannelGraph, transcript.ChannelPartial,
+			"Entire Graph reported "+strings.Join(rec.Changes.Warnings, "; "))
+	default:
+		ledger.Set(transcript.ChannelGraph, transcript.ChannelPresent, "")
+	}
+
 	vr := &verify.Record{
 		Stream:       stream,
 		Changes:      rec.Changes,
@@ -547,6 +585,7 @@ func assemble(res *checkpoint.Resolved, stream *transcript.Stream, rec *auditRec
 		FilesTouched: res.FilesTouched,
 		Impacts:      rec.Impacts,
 		RepoRoot:     opts.repo,
+		Ledger:       ledger,
 	}
 
 	// One verifier per family, chosen by the claim's own family. A claim from
@@ -593,7 +632,10 @@ func assemble(res *checkpoint.Resolved, stream *transcript.Stream, rec *auditRec
 		ID: res.ID, Commit: res.Commit, Parent: res.Parent,
 		Agent: res.Agent, SessionIDs: res.SessionIDs, IsMerge: res.IsMerge,
 	}
-	return report.New(cp, in, rows, unrequested, notes, limitations(), log.Calls())
+	rep := report.New(cp, in, rows, unrequested, notes, limitations(), log.Calls())
+	rep.Ledger = ledger
+	rep.Sensitive = opts.sensitive
+	return rep
 }
 
 func adapterName(s *transcript.Stream, opts *options) string {
@@ -620,6 +662,11 @@ func failOnMet(r *report.Report, failOn string) bool {
 		return r.Counts.Impeached > 0
 	case "uncorroborated":
 		return r.Counts.Impeached > 0 || r.Counts.Uncorroborated > 0
+	case "incomplete":
+		// Gating on partial context, so CI can refuse to accept a run whose
+		// evidence was incomplete even when nothing was impeached. No new
+		// exit code: this is the same exit 2 as any other --fail-on.
+		return r.Ledger != nil && !r.Ledger.Complete()
 	default:
 		return false
 	}

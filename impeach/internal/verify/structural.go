@@ -6,6 +6,7 @@ import (
 
 	"github.com/entireio/cli/impeach/internal/claims"
 	"github.com/entireio/cli/impeach/internal/record"
+	"github.com/entireio/cli/impeach/internal/transcript"
 )
 
 // Structural verifies claims that an entity was added, removed or renamed.
@@ -55,7 +56,11 @@ func (s Structural) Verify(c claims.Claim, r *Record) Verdict {
 				v.Summary = fmt.Sprintf("Entire Graph lists %s %s as %s in %s.",
 					ch.SymbolKind, ch.Name, ch.Kind, ch.Path)
 				v.Evidence = append(v.Evidence, entityEvidence(ch))
-				return v
+				// Gated on the Graph channel, not a transcript one. Graph
+				// reads the code at the commit, so a redacted transcript
+				// leaves this evidence intact; what would gate it is Graph
+				// itself failing to answer or failing to parse the file.
+				return gate(v, r, transcript.ChannelGraph)
 			}
 		}
 		// The name is in the diff but with a different kind of change. That

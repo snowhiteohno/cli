@@ -1,0 +1,13 @@
+{
+  "name": "entire",
+  "args": [
+    "graph",
+    "commit",
+    "458bb14287ec2e0dcd4b6c52a779c9213af5be52",
+    "--repo",
+    "<home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/head",
+    "--json"
+  ],
+  "stdout": "{\n  \"base\": \"650a885fdf96dde7f230729ca19db0c8ea217f53\",\n  \"head\": \"458bb14287ec2e0dcd4b6c52a779c9213af5be52\",\n  \"files\": [\n    {\n      \"path\": \"impeach/fixtures/app/app/service.py\",\n      \"status\": \"M\",\n      \"language\": \"Python\",\n      \"changes\": [\n        {\n          \"type\": \"body_changed\",\n          \"kind\": \"function\",\n          \"name\": \"round_money\",\n          \"before_start_line\": 13,\n          \"after_start_line\": 13,\n          \"dependents_count\": 8\n        }\n      ]\n    }\n  ]\n}\n",
+  "exit": 0
+}

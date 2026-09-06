@@ -50,6 +50,12 @@ type htmlView struct {
 	CSS          template.CSS
 	JS           template.JS
 	EmbeddedJSON template.JS
+
+	// ChannelLedger and ContextSentence are the context ledger, rendered
+	// above the summary strip because they qualify every count in it.
+	ChannelLedger   string
+	ContextSentence string
+	Sensitive       bool
 }
 
 type htmlRow struct {
@@ -152,6 +158,10 @@ func newHTMLView(r *Report, css, js, jsonBlob []byte) *htmlView {
 		CSS:          template.CSS(css),
 		JS:           template.JS(js),
 		EmbeddedJSON: template.JS(escapeJSONForScript(jsonBlob)),
+
+		ChannelLedger:   r.ChannelLedger(),
+		ContextSentence: r.ContextSentence(),
+		Sensitive:       r.Sensitive,
 	}
 	if len(r.Inputs.Extractors) > 0 {
 		v.ExtractorList = strings.Join(r.Inputs.Extractors, ", ")

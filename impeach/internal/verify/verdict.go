@@ -50,6 +50,9 @@ const (
 	EvidenceEntity  EvidenceType = "entity"
 	EvidenceImpact  EvidenceType = "impact"
 	EvidenceRerun   EvidenceType = "rerun"
+	// EvidenceChannel records the state of an evidence channel, so a gated
+	// verdict carries the reason it was gated as evidence in its own right.
+	EvidenceChannel EvidenceType = "channel"
 )
 
 // maxExcerpt bounds an output excerpt. The security policy caps evidence
@@ -107,6 +110,76 @@ type Record struct {
 	Impacts map[string]*record.Impact
 	// RepoRoot is the repository the audit ran against.
 	RepoRoot string
+	// Ledger is the state of every evidence channel. It gates what a verdict
+	// may conclude, which is why it lives on the Record every verifier reads
+	// rather than being checked in one place.
+	Ledger *transcript.Ledger
+}
+
+// ReasonChannelIncomplete is the reason code for a verdict that could not be
+// corroborated because the channel it rests on was not intact.
+const ReasonChannelIncomplete = "channel-incomplete"
+
+// gate downgrades a corroborated verdict when the channel it rests on is not
+// present.
+//
+// This is the asymmetry the privacy constraint turns on. A partial or redacted
+// channel can still impeach, because a contradiction survives redaction: if a
+// command's surviving output shows a failure, the claim is false whatever was
+// removed. It can never corroborate, because the evidence that would have
+// contradicted the claim may be exactly the evidence that was removed.
+// Absence of evidence is not evidence of honesty.
+//
+// Impeached, uncorroborated and unverifiable verdicts pass through untouched.
+// Only corroboration is gated, and only on the channel the verifier actually
+// rested on.
+func gate(v Verdict, r *Record, c transcript.Channel) Verdict {
+	// Impeached passes through untouched. A contradiction from a channel that
+	// survived is still a contradiction, and letting redaction erase a
+	// verdict would make redaction a way to escape one.
+	//
+	// Uncorroborated is gated as well as corroborated, and that distinction
+	// matters. Uncorroborated means the channel was readable and held nothing
+	// either way. On a redacted or partial channel that is the wrong
+	// statement: it was not readable, so nothing can be concluded about what
+	// it held. That is unverifiable by this tool's own vocabulary.
+	if v.Status != Corroborated && v.Status != Uncorroborated {
+		return v
+	}
+	state := r.Ledger.State(c)
+	if state.Corroborating() {
+		return v
+	}
+	// An absent channel is already reported as unverifiable by the verifier
+	// itself, with a summary naming the channel. Nothing to add.
+	if state == transcript.ChannelAbsent && v.Status == Uncorroborated {
+		return v
+	}
+
+	was := v.Status
+	v.Status = Unverifiable
+	v.addReason(ReasonChannelIncomplete)
+	reason := r.Ledger.Reason(c)
+	if reason == "" {
+		reason = fmt.Sprintf("the %s channel is %s", c, state)
+	}
+	if was == Corroborated {
+		v.Summary = fmt.Sprintf(
+			"The record supports this claim, but the %s channel is %s, so it cannot be corroborated: %s. "+
+				"What was removed could be what would have contradicted it.",
+			c, state, reason)
+	} else {
+		v.Summary = fmt.Sprintf(
+			"Nothing in the record supports or contradicts this claim, and the %s channel is %s, "+
+				"so that silence proves nothing: %s.",
+			c, state, reason)
+	}
+	v.Evidence = append(v.Evidence, Evidence{
+		Type:   EvidenceChannel,
+		Text:   string(c),
+		Detail: string(state),
+	})
+	return v
 }
 
 // RelevantEditedFiles returns the files the session edited that also appear in

@@ -17,6 +17,10 @@ type config struct {
 	// contributes test ids, so it is how a detached worktree builds whatever
 	// the suite needs.
 	Setup string `json:"setup"`
+	// Sensitive forbids anything leaving the machine. Committing it means the
+	// repository itself declares the constraint, so a colleague who runs
+	// Impeach here cannot enable a model command by accident.
+	Sensitive bool `json:"sensitive"`
 }
 
 // configName is looked for at the repository root.

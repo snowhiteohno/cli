@@ -4,8 +4,12 @@
 package report
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/entireio/cli/impeach/internal/claims"
 	"github.com/entireio/cli/impeach/internal/record"
+	"github.com/entireio/cli/impeach/internal/transcript"
 	"github.com/entireio/cli/impeach/internal/verify"
 )
 
@@ -21,7 +25,14 @@ type Report struct {
 	// Unrequested is row type five: added or signature-changed symbols no
 	// prompt asked for.
 	Unrequested *verify.UnrequestedResult
-	Counts      Counts
+	// Ledger is the state of every evidence channel for this run. It is
+	// reported whether or not anything is missing, because a reader needs to
+	// know what the verdicts were computed from, not only what they were.
+	Ledger *transcript.Ledger
+	// Sensitive records that the run was in sensitive mode, where nothing may
+	// leave the machine.
+	Sensitive bool
+	Counts    Counts
 	// Notes are conditions a reader must know to read the table correctly:
 	// a missing channel, a degraded rerun, a merge commit.
 	Notes []string
@@ -147,6 +158,65 @@ func less(a, b Row) bool {
 		return a.Claim.Turn < b.Claim.Turn
 	}
 	return a.Claim.Seq < b.Claim.Seq
+}
+
+// GatedByChannel counts the claims that could not be corroborated because
+// the channel they rest on was not intact. This is the number the incomplete
+// context sentence reports, and it is what --fail-on incomplete gates on.
+func (r *Report) GatedByChannel() int {
+	n := 0
+	for _, row := range r.Rows {
+		for _, code := range row.Verdict.Reasons {
+			if code == verify.ReasonChannelIncomplete {
+				n++
+				break
+			}
+		}
+	}
+	return n
+}
+
+// ContextSentence is the one-line statement of incomplete context, or the
+// empty string when every channel is intact.
+func (r *Report) ContextSentence() string {
+	if r.Ledger == nil {
+		return ""
+	}
+	short := r.Ledger.Incomplete()
+	if len(short) == 0 {
+		return ""
+	}
+	names := make([]string, 0, len(short))
+	for _, c := range short {
+		names = append(names, fmt.Sprintf("%s is %s", c, r.Ledger.State(c)))
+	}
+	gated := r.GatedByChannel()
+	s := "Context is incomplete: " + strings.Join(names, ", ") + "."
+	if gated > 0 {
+		s += fmt.Sprintf(" %d %s could not be corroborated as a result.",
+			gated, plural(gated, "claim", "claims"))
+	}
+	return s
+}
+
+// ChannelLedger renders the ledger as one line, always, so the reader can see
+// what the run had to work with even when nothing is missing.
+func (r *Report) ChannelLedger() string {
+	if r.Ledger == nil {
+		return ""
+	}
+	parts := make([]string, 0, len(transcript.AllChannels))
+	for _, c := range transcript.AllChannels {
+		parts = append(parts, fmt.Sprintf("%s %s", c, r.Ledger.State(c)))
+	}
+	return strings.Join(parts, ", ")
+}
+
+func plural(n int, one, many string) string {
+	if n == 1 {
+		return one
+	}
+	return many
 }
 
 // Lead returns the claim that should headline the report: the impeached claim

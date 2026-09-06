@@ -6,6 +6,7 @@ import (
 
 	"github.com/entireio/cli/impeach/internal/claims"
 	"github.com/entireio/cli/impeach/internal/record"
+	"github.com/entireio/cli/impeach/internal/transcript"
 )
 
 // Safety verifies claims that a change is contained or compatible.
@@ -72,7 +73,7 @@ func (s Safety) Verify(c claims.Claim, r *Record) Verdict {
 			v.Summary = fmt.Sprintf("The signature of %s did not change, so its %d %s keep the same contract.",
 				subject, len(impact.Callers), callerWord(len(impact.Callers)))
 		}
-		return v
+		return gate(v, r, transcript.ChannelGraph)
 
 	default:
 		// A containment claim is about who depends on the symbol, so any
@@ -88,7 +89,7 @@ func (s Safety) Verify(c claims.Claim, r *Record) Verdict {
 		}
 		v.Status = Corroborated
 		v.Summary = fmt.Sprintf("Entire Graph finds no callers of %s outside the changed set.", subject)
-		return v
+		return gate(v, r, transcript.ChannelGraph)
 	}
 }
 

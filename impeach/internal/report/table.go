@@ -24,6 +24,7 @@ var reasonPhrases = map[string]string{
 	verify.ReasonSignatureChanged:   "signature changed",
 	verify.ReasonNotInDiff:          "not in diff",
 	verify.ReasonNeverRead:          "never read",
+	verify.ReasonChannelIncomplete:  "channel incomplete",
 }
 
 // Table writes the terminal report.
@@ -31,6 +32,11 @@ func Table(w io.Writer, r *Report) error {
 	if err := writeHeader(w, r); err != nil {
 		return err
 	}
+
+	// The ledger goes above the rows, because it says what the verdicts below
+	// were computed from. A reader who sees corroborated rows without knowing
+	// a channel was redacted has been told something misleading.
+	writeLedger(w, r)
 
 	if len(r.Rows) == 0 {
 		fmt.Fprintf(w, "\nNo claims matched the pattern library. Run with --model CMD to add an extractor,\n"+
@@ -73,8 +79,13 @@ func Table(w io.Writer, r *Report) error {
 
 	// The evidence behind every impeachment, because a verdict without its
 	// evidence is just another claim.
+	//
+	// Rows gated by an incomplete channel expand too. Those are the ones a
+	// reader is most likely to misread: "unverifiable" on its own looks like
+	// the tool shrugging, when in fact it means the evidence was removed and
+	// the row is saying so.
 	for _, row := range r.Rows {
-		if row.Verdict.Status != verify.Impeached {
+		if row.Verdict.Status != verify.Impeached && !gatedByChannel(row) {
 			continue
 		}
 		fmt.Fprintf(w, "\n%s [%s] %q\n", strings.ToUpper(string(row.Verdict.Status)), row.Claim.ID, row.Claim.Text)
@@ -98,6 +109,29 @@ func Table(w io.Writer, r *Report) error {
 // writeUnrequested prints row type five and, importantly, what was searched
 // for, so a reader can see why a match failed rather than taking the flag on
 // trust.
+// writeLedger prints the context ledger and, when anything is short of
+// present, the one-sentence statement of what that cost.
+// gatedByChannel reports whether a row was downgraded because the channel it
+// rests on was not intact.
+func gatedByChannel(row Row) bool {
+	for _, code := range row.Verdict.Reasons {
+		if code == verify.ReasonChannelIncomplete {
+			return true
+		}
+	}
+	return false
+}
+
+func writeLedger(w io.Writer, r *Report) {
+	if r.Ledger == nil {
+		return
+	}
+	fmt.Fprintf(w, "\nContext: %s.\n", r.ChannelLedger())
+	if s := r.ContextSentence(); s != "" {
+		fmt.Fprintf(w, "%s\n", s)
+	}
+}
+
 func writeUnrequested(w io.Writer, r *Report) {
 	un := r.Unrequested
 	if un == nil {
@@ -185,6 +219,10 @@ func writeHeader(w io.Writer, r *Report) error {
 	}
 	fmt.Fprintf(w, "Adapter %s. Extractors: %s. Test command: %s. Rerun: %s. Model command: %s.\n",
 		r.Inputs.Adapter, strings.Join(r.Inputs.Extractors, ", "), test, yesNo(r.Inputs.Rerun), model)
+
+	if r.Sensitive {
+		fmt.Fprintln(w, "Mode: sensitive. No model command may run and nothing leaves this machine.")
+	}
 
 	if r.Checkpoint.IsMerge {
 		fmt.Fprintln(w, "This is a merge commit; the diff is against the first parent.")

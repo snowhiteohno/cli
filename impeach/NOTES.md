@@ -821,3 +821,198 @@ came from running the thing rather than reading it: the four verdict false
 positives, the write-only recorded fixtures, the unscrubbed `commands_run`,
 the prompt corpus in the report, and now three broken instructions in the
 install path. Reading found the typos.
+
+## Constraint change: privacy and completeness
+
+Announced as a curveball. Playbook consulted first, per the process rule. The
+relevant entry in `docs/ARCHITECTURE.md` is already close to this: "Redacted or
+missing transcript: unverifiable rows with the channel named; unrequested and
+structural rows still run from Graph and prompts if prompts survive." So the
+change lands where the playbook says it lands. It is not a redesign.
+
+### Step 0: impact analysis, recorded before any edit
+
+Three entry points, disambiguated by file and line because each name is
+ambiguous and Graph returns the definition list rather than guessing.
+
+**Extractor boundary**, `Extractor.Extract` at `internal/claims/claim.go:137`.
+Zero callers, because dispatch through an interface is dynamic. 4 type
+consumers, which are the real affected paths:
+
+```
+Claim   internal/claims/claim.go:79        RETURNS_TYPE, USES_TYPE
+Event   internal/transcript/event.go:85    PARAM_TYPE, USES_TYPE
+```
+
+Concrete implementations: `Pattern.Extract` at `patterns.go:168` and
+`Model.Extract` at `model.go:69`.
+
+**Verifier boundary**, `Verifier.Verify` at `internal/verify/verdict.go:90`.
+Zero callers, 5 type consumers:
+
+```
+Claim    internal/claims/claim.go:79    PARAM_TYPE, USES_TYPE
+Verdict  internal/verify/verdict.go:74  RETURNS_TYPE, USES_TYPE
+Record   internal/verify/verdict.go:96  USES_TYPE
+```
+
+`Record` is used by all four verifiers, which makes it the single insertion
+point for completeness gating. Concrete implementations at
+`execution.go:79`, `structural.go:26`, `safety.go:22`, `reading.go:23`.
+
+**Renderers.** `Table` at `internal/report/table.go:30` has 7 callers, 6
+direct: `emit` at `main.go:388`, five table tests, and `auditOne` at
+`main.go:371` transitively. `ToJSON` has 15 callers, of which the non-test
+ones are `emit` at `main.go:403`, `HTML` at `html.go:104` and `WriteJSON`.
+`HTML` has 21 callers, non-test being `emit` at `main.go:414` and `WriteHTML`.
+Both take `Report` at `report.go:16` as PARAM_TYPE.
+
+**Conclusion from the impact data.** Every non-test path converges on three
+functions in `cmd/entire-impeach/main.go`: `auditOne`, `assemble` and `emit`.
+Nothing outside `internal/{transcript,verify,report}` and that one file needs
+to change. No caller outside the module exists, because the module has no
+importers. That is the affected-path evidence, and it is why this is a
+contained change rather than a rewrite.
+
+### Already compliant, cited not rebuilt
+
+`docs/SECURITY_AND_ACCESS.md` already commits to all of the following, and
+none of it is being reimplemented:
+
+- No network on the default path. "The default path makes no network calls."
+  `--model` is the only outbound path and is opt in.
+- Transcripts never written to `--out`. "Never write a transcript, in whole or
+  in part, to `--out`. Evidence excerpts are bounded and scrubbed." Enforced in
+  phase 7 and covered by `TestReplayJSONCarriesNoRawTranscript`.
+- Bounded scrubbed excerpts. 400 characters per evidence item plus a
+  second-pass credential scrub, built in phase 7 and applied to the table, the
+  JSON and the HTML.
+- Unverifiable as a state, never an error. The invariant the whole tool rests
+  on, present since phase 5.
+
+Prompts are also already kept out of reports as full text, tightened in
+phase 8 to a corpus size plus the tokens actually searched for.
+
+### Plan, written before editing
+
+Three changes, in the boundary the playbook names.
+
+1. **Sensitive mode is a refusal.** `--sensitive`, and `"sensitive": true` in
+   `.impeach.json`. In that mode `--model` is refused: non-zero exit, clear
+   message, no call attempted. Not ignored and not warned about, because a
+   warning still sends the text. The report header states the mode verbatim.
+   Lands in flag validation and `buildRunner`, ahead of any extractor.
+
+2. **Completeness gates the verdict.** Every evidence channel carries an
+   explicit state: present, partial, redacted, absent. `Corroborated` is
+   reachable only from a `present` channel. A `partial` or `redacted` channel
+   can still impeach, because a contradiction survives redaction, but it can
+   never corroborate; it degrades to `unverifiable` with the channel named.
+   Asymmetric deliberately: absence of evidence is not evidence of honesty.
+   Lands on `verify.Record`, which the impact data shows is used by all four
+   verifiers, so one field reaches all of them.
+
+3. **A context ledger on the run.** Header line and a JSON field listing each
+   channel and its state, plus one sentence when anything is short of present.
+   Above the rows in the table, above the summary strip in the HTML. `--fail-on
+   incomplete` so CI can gate on partial context. No new exit code; 0, 1 and 2
+   are settled.
+
+### Blocked on one input
+
+The instruction says to test with an attached fixture. **No fixture is
+attached**, and nothing new appears in the tree or on the Desktop. Everything
+else proceeds. A redacted scenario is synthesized here as a stand-in, clearly
+labelled as synthetic in `fixtures/recorded/`, so the supplied one can replace
+it without touching the tests. The three required assertions do not depend on
+which fixture is used.
+
+### What changed, and why the result can be trusted
+
+Implemented in the boundaries the impact analysis named. 311 tests, vet clean,
+race clean, pytest at 22 passed with the 3 documented seeded failures.
+
+**Channel states**, `internal/transcript/channels.go`. Four states: present,
+partial, redacted, absent. Redaction and truncation are detected from markers
+left behind, and the adapter never tries to reconstruct what was removed. The
+precedence is absent, then redacted, then partial: a channel with no events
+cannot be partially anything, and a removed secret is a stronger statement
+about what a reader cannot see than a shortened output is. Records the adapter
+could not read, and subagent activity it does not examine, make otherwise
+present channels partial, because the dropped record could have been any kind
+of event.
+
+**The gate**, on `verify.Record`, which the impact data showed is used by all
+four verifiers, so one field reached all of them. Corroborated is reachable
+only from a present channel.
+
+Two decisions inside the gate worth defending:
+
+- **Uncorroborated is gated too**, not only corroborated. Uncorroborated means
+  the channel was readable and held nothing either way. On a redacted channel
+  that is simply the wrong statement: it was not readable, so its silence
+  proves nothing. Reporting it as uncorroborated would quietly imply a search
+  that never happened.
+- **Graph is its own channel.** The first implementation gated structural and
+  safety on the edits channel, which was wrong. Graph reads the code at the
+  commit, not the transcript, so a redacted transcript leaves a Graph-derived
+  verdict intact. What should gate those is Graph failing to answer or failing
+  to parse the file, and that is what `ChannelGraph` now carries, set by the
+  record layer because only it knows whether Graph answered.
+
+**Sensitive mode** is a refusal at the entry point, before `buildRunner` and
+before any extractor exists. `--sensitive` or `"sensitive": true` in a
+committed `.impeach.json`, so the repository itself can carry the constraint.
+A test asserts zero calls were made, because refusing after the first turn has
+been sent would be theatre.
+
+**The ledger** is on the run, reported whether or not anything is missing: a
+reader needs to know what the verdicts were computed from, not only what they
+were. Above the rows in the table, above the summary strip in the HTML, and a
+`channels` map with per-channel reasons in the JSON alongside
+`context_complete`, `context_note` and `claims_gated_by_channel`.
+`--fail-on incomplete` reuses exit 2; 0, 1 and 2 stay settled.
+
+Rows gated by a channel now expand in the terminal like impeached rows do.
+Those are the ones most likely to be misread: "unverifiable" alone looks like
+the tool shrugging, when it means the evidence was removed and the row is
+saying so.
+
+### A real bug this work exposed
+
+The custom-runner fallback in the execution verifier matched transcript
+commands against the first word of the configured test command. For a compound
+command like `cd app && pytest -q` that word is `cd`, which appears in almost
+every shell command, so an unrelated failing `git status` was being read as a
+failing test run and reported as `contradicted-output`. It showed up in the
+redacted scenario because redaction turned that git failure into an
+unparseable output while leaving `is_error` true.
+
+Fixed two ways: the fallback is skipped entirely when the built-in patterns
+already recognise the runner, since they are the precise answer; and when it
+is needed, the token is chosen by skipping shell builtins, with an
+unmatchable sentinel when nothing distinctive remains. A loose match here
+manufactures evidence, which is worse than missing a runner. Three tests pin
+it, including one that a weak test command must match nothing.
+
+That bug was a false positive of exactly the kind this build keeps producing
+and catching: a verdict invented from an unrelated command. It is the fifth
+one, and like the others it surfaced only from running the tool on real data.
+
+### Why the revised behaviour can be trusted
+
+The asymmetry is asserted from both directions on the same scenario, which is
+the strongest form available: run `redacted-toollog` with `--no-rerun` and the
+claim that its own command output would have supported becomes unverifiable
+with `channel-incomplete`; run it with the rerun and the same claim is
+impeached by `contradicted-rerun`. Redaction cannot buy a corroboration and
+cannot escape a contradiction. The ledger names the compromised channel and
+reports the other four as present, so it reads as a statement rather than a
+blanket warning.
+
+### Still outstanding
+
+The supplied fixture never arrived, so `redacted-toollog` is derived from the
+real `rerun-regression` recording with redaction applied, and says so in its
+`PROVENANCE.md`. A real redacted checkpoint can replace that directory without
+touching a line of the tests, because the assertions are about behaviour.

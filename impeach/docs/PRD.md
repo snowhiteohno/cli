@@ -31,10 +31,49 @@ The cost shows up as merged changes whose tests were never rerun after the last 
 
 Row type five, unrequested: an added or signature-changed symbol whose name (or its identifier tokens) appears in no prompt in the session. This is name matching only. It never uses a model.
 
+## Evidence channels and completeness
+
+Every evidence channel carries an explicit state: present, partial, redacted
+or absent. The distinction between absent and redacted decides what a verdict
+may conclude. An absent channel says nothing happened. A redacted one says
+something happened and hid what it was.
+
+Corroborated is reachable only from a channel that is present. A partial or
+redacted channel can still impeach, because a contradiction from an intact
+channel survives redaction of another, but it can never corroborate: what was
+removed could be exactly what would have contradicted the claim. Such a claim
+degrades to unverifiable with the channel named and the reason given. The
+asymmetry is deliberate. Absence of evidence is not evidence of honesty.
+
+The same reasoning applies to uncorroborated. On a readable channel it means
+the record held nothing either way. On a redacted or partial one that is the
+wrong statement, because the channel could not be read at all, so it also
+degrades to unverifiable.
+
+Graph is its own channel, separate from the transcript ones. Graph reads the
+code at the commit rather than the transcript, so redaction of a transcript
+leaves a structural or safety verdict intact; what gates those is Graph
+failing to answer or failing to parse the file.
+
+Every run reports a context ledger: each channel and its state, plus one
+sentence when anything is short of present, in the table, the JSON and the
+HTML. `--fail-on incomplete` lets CI refuse a run whose evidence was
+incomplete even when nothing was impeached, reusing exit 2.
+
+## Sensitive mode
+
+`--sensitive`, or `"sensitive": true` in a committed `.impeach.json`, forbids
+anything leaving the machine. In that mode `--model` is refused with a
+non-zero exit and a message naming the command it refused. Not ignored and
+not warned about: a warning would still have sent the text. The refusal
+happens before any call is made, and the report header states the mode
+verbatim.
+
 ## Verdicts
 
 - Corroborated: the record supports the claim.
 - Impeached: the record contradicts the claim. Every impeachment carries a reason code: `stale`, `scope-mismatch`, `contradicted-output`, `contradicted-rerun`, `callers-exist`, `signature-changed`, `not-in-diff`, `never-read`.
+- A ninth reason code, `channel-incomplete`, marks a verdict that was downgraded to unverifiable because the channel it rested on was not intact.
 - Uncorroborated: the evidence channel exists but contains nothing that supports or contradicts the claim (for example, a "tests pass" claim with no test command in the log, or output that could not be parsed).
 - Unverifiable: the evidence channel is missing (redacted transcript, an agent whose transcript carries no tool records, a language Graph does not parse). Missing data is a state, never an error.
 
@@ -49,7 +88,9 @@ entire impeach <checkpoint-id | commit-ish> [flags]
   --session           audit every checkpoint in the session, one report section each
   --format table|json|html   default table; html and json also written with --out
   --out PATH          write json and html reports here
-  --fail-on impeached|uncorroborated   non-zero exit when any row has this verdict
+  --fail-on impeached|uncorroborated|incomplete   non-zero exit when any row has this
+                      verdict, or when any evidence channel was not intact
+  --sensitive         refuse anything that would leave the machine; --model becomes an error
   --model CMD         opt-in extractor; runs CMD with a prompt on stdin, expects JSON claims
   --model-turns N     cap on assistant turns sent to --model (default 20)
   --adapter auto|claude-code   transcript adapter; auto detects from the checkpoint

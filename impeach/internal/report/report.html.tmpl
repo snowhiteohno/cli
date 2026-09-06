@@ -14,6 +14,7 @@
   <h1>Impeach {{.Version}} report</h1>
   <p class="meta">Checkpoint {{.Checkpoint.ID}} (commit {{.ShortCommit}}, parent {{.ShortParent}}){{if .SessionLine}}, {{.SessionLine}}{{end}}, agent {{.Agent}}.</p>
   <p class="meta">Adapter {{.Inputs.Adapter}}. Extractors: {{.ExtractorList}}. Test command: {{.TestCommand}}. Rerun: {{.RerunWord}}. Model command: {{.ModelCommand}}.</p>
+  {{if .Sensitive}}<p class="meta">Mode: sensitive. No model command may run and nothing leaves this machine.</p>{{end}}
   {{if .Checkpoint.IsMerge}}<p class="meta">This is a merge commit; the diff is against the first parent.</p>{{end}}
   {{range .Notes}}<p class="meta">{{.}}</p>{{end}}
 </section>
@@ -33,6 +34,12 @@
   {{else}}
     <p>No claim was impeached.</p>
   {{end}}
+</section>
+
+<section>
+  <h2>Context</h2>
+  <p class="meta">{{.ChannelLedger}}.</p>
+  {{if .ContextSentence}}<p class="incomplete">{{.ContextSentence}}</p>{{end}}
 </section>
 
 <section>

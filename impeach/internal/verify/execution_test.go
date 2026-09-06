@@ -65,12 +65,22 @@ func (b *builder) withRerun(r *record.Rerun) *builder {
 }
 
 func (b *builder) record() *Record {
-	return &Record{
-		Stream:       &transcript.Stream{Events: b.events, Adapter: "claude-code"},
+	stream := &transcript.Stream{Events: b.events, Adapter: "claude-code"}
+	r := &Record{
+		Stream:       stream,
 		Rerun:        b.rerun,
 		FilesTouched: b.files,
 		Impacts:      map[string]*record.Impact{},
+		// The ledger is built the same way production builds it, from the
+		// stream. A Record without one has every channel absent, which is
+		// correct but was not what these tests meant.
+		Ledger: stream.BuildLedger(),
 	}
+	// Graph is not a transcript channel, so the stream cannot know its state.
+	// These tests supply Changes directly, so the builder marks it present
+	// and the individual tests that drop Changes set it back.
+	r.Ledger.Set(transcript.ChannelGraph, transcript.ChannelPresent, "")
+	return r
 }
 
 // claimFrom extracts the single claim from a sentence, so the verifier is
@@ -509,4 +519,61 @@ func hasEvidence(v Verdict, typ EvidenceType, contains string) bool {
 		}
 	}
 	return false
+}
+
+// The custom-runner fallback used to match on the test command's first word.
+// For a compound command like `cd app && pytest` that word is "cd", which
+// appears in almost every shell command, so an unrelated failing command was
+// read as a failing test run and reported as contradicted-output. A verdict
+// invented from an unrelated command is the worst kind of false positive.
+func TestCustomRunnerFallbackDoesNotMatchUnrelatedCommands(t *testing.T) {
+	t.Parallel()
+	r := newBuilder().
+		edit("app/service.py").
+		run("cd app && pytest -q", pytestPass, 0).
+		// A failing command that merely shares the word "cd".
+		run("cd app && git status --porcelain --bogus-flag", "error: unknown option", 129).
+		touched("app/service.py").
+		record()
+
+	v := Execution{TestCommand: "cd app && pytest -q"}.Verify(claimFrom(t, "All tests pass.", 99), r)
+	if hasReason(v, ReasonContradictedOutput) {
+		t.Errorf("an unrelated failing command was read as a failing test run: %v, summary %q",
+			v.Reasons, v.Summary)
+	}
+	if v.Status != Corroborated {
+		t.Errorf("Status = %q, want %q", v.Status, Corroborated)
+	}
+}
+
+// A genuinely unusual runner is still recognised, which is what the fallback
+// is for.
+func TestCustomRunnerFallbackStillRecognisesAnUnusualRunner(t *testing.T) {
+	t.Parallel()
+	r := newBuilder().
+		edit("app/service.py").
+		run("bin/check-everything --all", "18 passed", 0).
+		touched("app/service.py").
+		record()
+
+	v := Execution{TestCommand: "bin/check-everything --all"}.Verify(claimFrom(t, "All tests pass.", 99), r)
+	if v.Status != Corroborated {
+		t.Errorf("Status = %q, want %q (reasons %v)", v.Status, Corroborated, v.Reasons)
+	}
+}
+
+// A test command with nothing distinctive in it must match nothing rather
+// than match loosely, because a loose match here manufactures evidence.
+func TestCustomRunnerFallbackMatchesNothingWhenWeak(t *testing.T) {
+	t.Parallel()
+	r := newBuilder().
+		edit("app/service.py").
+		run("cd app", "", 0).
+		touched("app/service.py").
+		record()
+
+	v := Execution{TestCommand: "cd"}.Verify(claimFrom(t, "All tests pass.", 99), r)
+	if v.Status == Corroborated {
+		t.Errorf("a weak test command corroborated a claim from an unrelated command: %q", v.Summary)
+	}
 }

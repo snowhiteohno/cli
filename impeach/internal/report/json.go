@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+
+	"github.com/entireio/cli/impeach/internal/transcript"
 )
 
 // The JSON schema is the machine-facing contract, and it exists from the
@@ -26,11 +28,19 @@ type jsonReport struct {
 	// keeps prompts out of reports as full text, and a full token list
 	// reconstructs the prompt almost verbatim. Each item carries the tokens
 	// that were actually searched for, which is what explains a failed match.
-	PromptTokenCount int        `json:"prompt_token_count,omitempty"`
-	Counts           jsonCounts `json:"counts"`
-	Notes            []string   `json:"notes,omitempty"`
-	Limitations      []string   `json:"limitations"`
-	CommandsRun      []string   `json:"commands_run"`
+	PromptTokenCount int `json:"prompt_token_count,omitempty"`
+	// Channels is the context ledger: each evidence channel and its state,
+	// with the reason for anything short of present. A machine consumer needs
+	// this to know whether a corroborated count means anything.
+	Channels        map[string]jsonChannel `json:"channels"`
+	ContextComplete bool                   `json:"context_complete"`
+	ContextNote     string                 `json:"context_note,omitempty"`
+	GatedClaims     int                    `json:"claims_gated_by_channel"`
+	Sensitive       bool                   `json:"sensitive_mode"`
+	Counts          jsonCounts             `json:"counts"`
+	Notes           []string               `json:"notes,omitempty"`
+	Limitations     []string               `json:"limitations"`
+	CommandsRun     []string               `json:"commands_run"`
 }
 
 type jsonCheckpoint struct {
@@ -86,6 +96,11 @@ type jsonUnrequested struct {
 	Tokens     []string `json:"tokens_searched,omitempty"`
 }
 
+type jsonChannel struct {
+	State  string `json:"state"`
+	Reason string `json:"reason,omitempty"`
+}
+
 type jsonCounts struct {
 	Corroborated   int `json:"corroborated"`
 	Impeached      int `json:"impeached"`
@@ -121,9 +136,14 @@ func ToJSON(r *Report) ([]byte, error) {
 		// value, so both go through the scrub. Leaving commands_run
 		// unscrubbed leaked a credential into the JSON and into the copy the
 		// HTML report embeds.
-		Notes:       ScrubAll(r.Notes),
-		Limitations: r.Limitations,
-		CommandsRun: ScrubAll(r.CommandsRun),
+		Channels:        map[string]jsonChannel{},
+		ContextComplete: r.Ledger == nil || r.Ledger.Complete(),
+		ContextNote:     r.ContextSentence(),
+		GatedClaims:     r.GatedByChannel(),
+		Sensitive:       r.Sensitive,
+		Notes:           ScrubAll(r.Notes),
+		Limitations:     r.Limitations,
+		CommandsRun:     ScrubAll(r.CommandsRun),
 	}
 	if out.Inputs.Channels == nil {
 		out.Inputs.Channels = map[string]bool{}
@@ -139,6 +159,15 @@ func ToJSON(r *Report) ([]byte, error) {
 	}
 	if out.CommandsRun == nil {
 		out.CommandsRun = []string{}
+	}
+
+	if r.Ledger != nil {
+		for _, c := range transcript.AllChannels {
+			out.Channels[string(c)] = jsonChannel{
+				State:  string(r.Ledger.State(c)),
+				Reason: r.Ledger.Reason(c),
+			}
+		}
 	}
 
 	out.Claims = make([]jsonClaim, 0, len(r.Rows))

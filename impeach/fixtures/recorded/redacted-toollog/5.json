@@ -1,0 +1,15 @@
+{
+  "name": "git",
+  "args": [
+    "-C",
+    "<repo>",
+    "worktree",
+    "add",
+    "--detach",
+    "--quiet",
+    "<home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/head",
+    "458bb14287ec2e0dcd4b6c52a779c9213af5be52"
+  ],
+  "stdout": "",
+  "exit": 0
+}

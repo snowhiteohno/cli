@@ -98,7 +98,7 @@ func (e Execution) Verify(c claims.Claim, r *Record) Verdict {
 		v.Summary = fmt.Sprintf("No %s command appears in the session's tool log, so nothing supports this claim.", c.Kind)
 		e.attachRerun(&v, r)
 		e.applyRerunContradiction(&v, c, r)
-		return v
+		return gate(v, r, transcript.ChannelCommands)
 	}
 
 	supporting, unparsed, failing := pickSupporting(candidates)
@@ -121,7 +121,7 @@ func (e Execution) Verify(c claims.Claim, r *Record) Verdict {
 		}
 		e.attachRerun(&v, r)
 		e.applyRerunContradiction(&v, c, r)
-		return v
+		return gate(v, r, transcript.ChannelCommands)
 	}
 
 	v.Evidence = append(v.Evidence, commandEvidence(supporting, outcomeSuccess))
@@ -166,7 +166,10 @@ func (e Execution) Verify(c claims.Claim, r *Record) Verdict {
 
 	v.Status = Corroborated
 	v.Summary = corroboratedSummary(c, supporting, cmdScope)
-	return v
+	// An execution claim rests on the command log. If that channel was
+	// redacted or truncated, the run that would have contradicted the claim
+	// may be exactly the part that is missing.
+	return gate(v, r, transcript.ChannelCommands)
 }
 
 // candidates returns the commands that could support the claim, in order.
@@ -180,9 +183,19 @@ func (e Execution) candidates(c claims.Claim, r *Record) []*transcript.Event {
 		}
 		match := re != nil && re.MatchString(ev.Cmd.Cmd)
 		// The user's own test command counts as a test runner even when it
-		// matches none of the built-in patterns.
-		if !match && c.Kind == claims.KindTest && e.TestCommand != "" &&
-			strings.Contains(ev.Cmd.Cmd, firstWord(e.TestCommand)) {
+		// matches none of the built-in patterns, which is how a project with
+		// an unusual runner is still recognised.
+		//
+		// It is deliberately skipped when the test command already matches a
+		// built-in pattern. Matching on its first word was wrong: a compound
+		// command like `cd app && pytest` has "cd" as its first word, which
+		// appears in almost every shell command, so a failing `git status`
+		// was being read as a failing test run and reported as
+		// contradicted-output. When the built-in patterns already recognise
+		// the runner, they are the precise answer and the fallback can only
+		// add noise.
+		if !match && c.Kind == claims.KindTest && e.usesCustomRunner() &&
+			strings.Contains(ev.Cmd.Cmd, e.runnerToken()) {
 			match = true
 		}
 		if match {
@@ -412,10 +425,41 @@ func capitalize(s string) string {
 	return strings.ToUpper(s[:1]) + s[1:]
 }
 
-func firstWord(s string) string {
-	s = strings.TrimSpace(s)
-	if i := strings.IndexAny(s, " \t"); i > 0 {
-		return s[:i]
+// usesCustomRunner reports whether the configured test command is something
+// the built-in patterns do not already recognise. Only then is the fallback
+// needed.
+func (e Execution) usesCustomRunner() bool {
+	if strings.TrimSpace(e.TestCommand) == "" {
+		return false
 	}
-	return s
+	for _, re := range runnerPatterns {
+		if re.MatchString(e.TestCommand) {
+			return false
+		}
+	}
+	return true
+}
+
+// runnerToken picks a distinctive token from a custom test command to match
+// transcript commands against.
+//
+// Shell builtins and operators are skipped, because matching on those matches
+// everything. An empty result disables the fallback rather than matching
+// loosely, since a loose match here manufactures evidence.
+func (e Execution) runnerToken() string {
+	for _, seg := range transcript.Segments(e.TestCommand) {
+		for _, tok := range strings.Fields(seg) {
+			switch tok {
+			case "cd", "&&", "||", ";", "{", "}", "(", ")", "test", "-d", "sh", "-c", "env", "then", "else", "fi", "do", "done":
+				continue
+			}
+			if strings.HasPrefix(tok, "-") || len(tok) < 3 {
+				continue
+			}
+			return strings.Trim(tok, "\"'")
+		}
+	}
+	// Nothing distinctive, so match nothing. A token this weak would match
+	// unrelated commands and invent a verdict.
+	return "\x00"
 }

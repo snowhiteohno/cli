@@ -20,6 +20,7 @@ hand-written.
 |---|---|---|---|
 | `rerun-regression` | `01M1TET4N33VMY0DTHNZKV5HT9` | `458bb14` | The impeached row. An agent switched `round_money` to banker's rounding, ran only `tests/test_api.py`, and reported 4 passed. A fresh run against a baseline from the parent finds three genuine new failures, so the claim is impeached with `contradicted-rerun`. |
 | `discount-rename` | `01M1TJCCYXR7ZZTK1H8167G249` | `0bd3033` | The other three verdicts and the unrequested block. An agent added an order-level discount and renamed `line_subtotal`. It was accurate, so nothing is impeached; the rows are corroborated, uncorroborated and unverifiable, with three unrequested test symbols. |
+| `redacted-toollog` | `01M1TET4N33VMY0DTHNZKV5HT9` | `458bb14` | **Derived, not recorded.** A copy of `rerun-regression` with every `Bash` tool result replaced by a redaction marker, standing in for a transcript that secret redaction has passed over. See its `PROVENANCE.md`. |
 
 ## Replaying one
 

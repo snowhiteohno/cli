@@ -465,3 +465,113 @@ round-trip, so that phase is wiring rather than design.
   repository-local only.
 - The fixture app's virtualenv is gitignored. `sh scripts/setup.sh` rebuilds
   it, and the demo `--test` command rebuilds it inside a worktree on its own.
+
+## End of phase 6, the pre-noon stop
+
+### Current intent
+
+Ship a clean, honest phase 6: all four claim families verified, the
+unrequested detector working, and a demo table on a real captured checkpoint.
+Phases 7 to 11 are cut. The landing page is cut. Phase 11, running Impeach on
+its own build session, is cut for a reason recorded below and in
+BUILDATHON.md, not attempted.
+
+### Architecture, unchanged
+
+Four boundaries, each an interface with one default implementation: checkpoint
+reader, claim extractors, verifiers, report renderers. One `Runner` for every
+external process, with no working-directory field so a recorded call is fully
+described by name and argv. Deterministic core, offline by default, model
+extractor opt-in only. Missing data is a state, never an error. Impeach never
+executes a command found in a transcript.
+
+### What is done
+
+- All four verifiers: execution, structural, safety, reading. Each returns one
+  of four verdicts with typed evidence and reason codes.
+- The unrequested detector, row type five. Added and signature-changed symbols
+  only; body-only changes are never candidates. It reports the prompt tokens
+  it searched, so a reader can see why a match failed instead of taking the
+  flag on trust. Production symbols sort above tests.
+- The safety verifier asks the right question per claim subtype. This is a
+  real distinction, not a refinement: containment claims ("no other callers")
+  are contradicted by callers, compatibility claims ("no behaviour change")
+  are not, and only a signature change under live callers contradicts those.
+- 224 Go tests, green. 22 of 25 pytest tests pass; the 3 failures are the
+  documented seeded ones from banker's rounding.
+- A second demo checkpoint, `01M1TJCCYXR7ZZTK1H8167G249`, from a real captured
+  session that added an order-level discount and renamed `line_subtotal`.
+
+### Four false positives, found and fixed
+
+Phase 6's first run against the real checkpoint produced five rows, four of
+them wrong. Recorded in full because it is the most useful thing this phase
+produced:
+
+1. Two markdown section headings were read as claims. The agent wrote
+   `**Other callers, and whether I reviewed them**` as a heading, and the
+   reading verifier corroborated it. A wholly emphasized line is now treated
+   as a heading and skipped, decided before the emphasis markers are stripped
+   because stripping them destroys the only evidence that it was a heading.
+2. A lead-in clause ending in a colon was read as a structural claim and
+   impeached for `not-in-diff`. A clause ending in a colon introduces what
+   follows and asserts nothing.
+3. The safety verifier impeached "a plain rename with no behaviour change"
+   for `callers-exist`. That is a compatibility claim, and having callers says
+   nothing about behaviour. Split into containment and compatibility.
+
+The pattern holds from phase 5: every false positive was found by pointing the
+tool at real data, never by reading the code. Unit tests written from the
+design cannot find these, because the design does not know that agents write
+in markdown headings.
+
+### What is not done
+
+- No JSON or HTML report. The `Report` struct both would render from exists.
+- No `impeach record` or committed replay scenarios. The `Recording` and
+  replaying `Fake` halves exist and are tested round trip; this is wiring.
+- No `--session`, no `--model` extractor, no second adapter.
+- No landing page. Cut deliberately.
+- No fork, no push, no mirror. Blocked on credentials, see below.
+
+### Open risks
+
+1. **No fork, no mirror, no push. This is the top risk and it is not
+   technical.** `gh` is authenticated only as `snowhiteohnopt2`, the
+   work-linked account, and git pushes to github.com are routed through
+   `gh auth git-credential`, so both the fork and the push would use the wrong
+   identity. Entire itself is correctly authenticated as `snowhiteohno`
+   (`github/218808583`), and the commit author is set repo-local to match.
+   `entire repo mirror create` takes a GitHub URL and registers server-side,
+   so it does **not** require an `entire repo clone`; that feared fallback is
+   closed. The whole submission chain is waiting on one `gh auth login` as
+   `snowhiteohno`, most reliably via a classic PAT with `repo` scope.
+2. **The demo table has no impeached row, and the reason is that the agent was
+   honest.** Coverage on `01M1TJCCYXR7ZZTK1H8167G249` is 2 corroborated,
+   1 uncorroborated, 1 unverifiable, 3 unrequested. The session scoped every
+   claim accurately, said plainly which tests it had not run, and flagged its
+   own verification gap. There is nothing to impeach. The earlier checkpoint
+   `01M1TET4N33VMY0DTHNZKV5HT9` does produce an impeached row, by
+   `contradicted-rerun`. So all four verdicts plus unrequested are
+   demonstrable, but across two checkpoints rather than one table. Getting all
+   five into one table needs either a seeded recorded scenario, which is what
+   `fixtures/recorded/<scenario>/` was for in the cut phase 7, or an agent
+   session that overclaims, which cannot be arranged honestly by instructing
+   one to lie. This is worth stating as a finding rather than hiding: the
+   tool's headline row is hardest to produce exactly when the agent under
+   audit is careful.
+3. **Only two commits carry checkpoints.** The build session predates the git
+   hooks. Both demo checkpoints come from `claude -p` subsessions, which are
+   captured. Phase 11 therefore cannot run and is not attempted.
+4. **The unrequested rows are currently three added test functions**, which is
+   noise rather than signal. They are correctly flagged by the specification,
+   since the prompt asked for tests generically without naming them, and they
+   are tagged `(test)` and sorted last. A production symbol nobody asked for
+   would be the interesting case and the fixture does not currently produce
+   one.
+5. **`graph verify` needs a self-bootstrapping test command** in a detached
+   worktree, because the fixture virtualenv is gitignored and absent there.
+   Without it the baseline records exit 127 and the rerun degrades to
+   `skipped`. The demo command builds the venv if missing; the plain
+   `--test 'pytest -q --tb=no -rA'` form reports `skipped` honestly instead of
+   claiming a pass.

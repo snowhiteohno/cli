@@ -21,6 +21,8 @@ type pattern struct {
 	// negated marks a pattern that denies rather than asserts, so
 	// "the tests do not pass" is not read as a claim that they do.
 	negated bool
+	// safety is set on safety patterns and says which question to ask.
+	safety SafetyKind
 }
 
 // executionPatterns is the starter library for claims that something ran and
@@ -38,6 +40,8 @@ var executionPatterns = []pattern{
 		`(?i)\b\d+\s+(tests?\s+)?(passed|passing)\b`)},
 	{name: "tests-still-pass", kind: KindTest, re: regexp.MustCompile(
 		`(?i)\btests?\s+(still|continue\s+to)\s+pass\b`)},
+	{name: "named-target-passes", kind: KindTest, re: regexp.MustCompile(
+		`(?i)\b(pass|passes|passed|passing)\b[^.]{0,40}?\b\d+\s+tests?\b|\b\d+\s+tests?\b[^.]{0,40}?\b(pass|passes|passed|passing)\b`)},
 	{name: "no-failures", kind: KindTest, re: regexp.MustCompile(
 		`(?i)\b(no|zero)\s+(test\s+)?(failures|failing\s+tests)\b`)},
 	{name: "verified-tests", kind: KindTest, re: regexp.MustCompile(
@@ -55,6 +59,57 @@ var executionPatterns = []pattern{
 	{name: "vet-clean", kind: KindLint, re: regexp.MustCompile(
 		`(?i)\b(go\s+)?vet\s+(passes|is\s+clean|reports\s+nothing)\b`)},
 }
+
+// structuralPatterns match claims that an entity was added, removed or
+// renamed. The subject is an identifier, so these lean on backticked names
+// and on CamelCase or snake_case words rather than on prose.
+var structuralPatterns = []pattern{
+	{name: "added", re: regexp.MustCompile(
+		`(?i)\b(added|created|introduced|wrote|implemented)\b`)},
+	{name: "removed", re: regexp.MustCompile(
+		`(?i)\b(removed|deleted|dropped|took\s+out)\b`)},
+	{name: "renamed", re: regexp.MustCompile(
+		`(?i)\brenamed\b`)},
+}
+
+// safetyPatterns match claims that a change is contained or compatible. The
+// safety field decides which question the verifier asks of the record.
+var safetyPatterns = []pattern{
+	{name: "no-other-callers", safety: SafetyContainment, re: regexp.MustCompile(
+		`(?i)\b(no|not\s+any|zero)\s+other\s+(callers?|call\s+sites?|usages?|users?)\b`)},
+	{name: "nothing-else-calls", safety: SafetyContainment, re: regexp.MustCompile(
+		`(?i)\bnothing\s+else\s+(calls|uses|references|depends\s+on)\b`)},
+	{name: "only-used-in", safety: SafetyContainment, re: regexp.MustCompile(
+		`(?i)\bonly\s+(used|called|referenced)\s+(in|by|from)\b`)},
+	{name: "no-callers", safety: SafetyContainment, re: regexp.MustCompile(
+		`(?i)\b(has|have)\s+no\s+(callers?|call\s+sites?|usages?)\b`)},
+	{name: "backward-compatible", safety: SafetyCompatibility, re: regexp.MustCompile(
+		`(?i)\bbackward[s]?\s+compatible\b|\bfully\s+compatible\b`)},
+	{name: "no-behaviour-change", safety: SafetyCompatibility, re: regexp.MustCompile(
+		`(?i)\bno\s+behaviou?r(al)?\s+change\b|\bbehaviou?r\s+is\s+unchanged\b`)},
+	{name: "isolated", safety: SafetyContainment, re: regexp.MustCompile(
+		`(?i)\b(fully|completely|entirely)?\s*isolated\b|\bself[\s-]contained\b|\bcontained\s+change\b`)},
+	{name: "safe-to-change", safety: SafetyCompatibility, re: regexp.MustCompile(
+		`(?i)\bsafe\s+to\s+(merge|change|ship|land|refactor)\b`)},
+	{name: "unaffected", safety: SafetyCompatibility, re: regexp.MustCompile(
+		`(?i)\b(is|are|remain|remains|stay|stays)\s+unaffected\b|\bnot\s+affected\b|\bunaffected\s+by\b`)},
+	{name: "nothing-breaks", safety: SafetyCompatibility, re: regexp.MustCompile(
+		`(?i)\bnothing\s+(else\s+)?(breaks|will\s+break)\b|\bwon't\s+break\s+anything\b`)},
+}
+
+// readingPatterns match claims to have looked at something.
+var readingPatterns = []pattern{
+	{name: "reviewed", re: regexp.MustCompile(
+		`(?i)\b(i\s+)?(reviewed|checked|inspected|examined|looked\s+at|read|went\s+through|studied)\b`)},
+	{name: "confirmed-by-reading", re: regexp.MustCompile(
+		`(?i)\b(verified|confirmed)\s+(that\s+)?(the\s+)?(callers?|call\s+sites?|tests?|usages?)\b`)},
+}
+
+// readingObjects are the things a reading claim has to name to be checkable.
+// A claim to have "looked at the code" names nothing resolvable and is
+// uncorroborated rather than impeached.
+var readingObjects = regexp.MustCompile(
+	`(?i)\b(callers?|call\s+sites?|usages?|tests?|test\s+files?)\b`)
 
 // negations disqualify a sentence before any pattern is tried. A sentence that
 // denies the claim, states a condition, or asks the reader to do the work is
@@ -122,30 +177,125 @@ func (p Pattern) Extract(events []transcript.Event) ([]Claim, error) {
 			if isNegated(sentence) {
 				continue
 			}
-			for _, pat := range executionPatterns {
-				if !pat.re.MatchString(sentence) {
-					continue
-				}
-				n++
-				out = append(out, Claim{
-					ID:        fmt.Sprintf("c%d", n),
-					Text:      sentence,
-					Family:    Execution,
-					Kind:      pat.kind,
-					Scope:     ClassifyScope(sentence),
-					Subjects:  Subjects(sentence),
-					Turn:      e.Turn,
-					Seq:       e.Seq,
-					Extractor: p.Name(),
-				})
-				// One claim per sentence. Several patterns matching the same
-				// sentence is the library agreeing with itself, not the agent
-				// making several claims.
-				break
+			c, ok := p.classify(sentence)
+			if !ok {
+				continue
 			}
+			n++
+			c.ID = fmt.Sprintf("c%d", n)
+			c.Text = sentence
+			c.Turn = e.Turn
+			c.Seq = e.Seq
+			c.Extractor = p.Name()
+			out = append(out, c)
 		}
 	}
 	return out, nil
+}
+
+// classify decides which family a sentence belongs to, if any.
+//
+// One claim per sentence, and the families are tried in a fixed order.
+// Execution comes first because "the tests pass" is a stronger, more
+// checkable statement than the reading verb that may sit in the same
+// sentence. Reading comes last for the same reason in reverse: "I checked the
+// callers and nothing else uses it" is really a safety claim, and verifying it
+// against impact is worth more than verifying that some file was opened.
+func (p Pattern) classify(sentence string) (Claim, bool) {
+	for _, pat := range executionPatterns {
+		if pat.re.MatchString(sentence) {
+			return Claim{
+				Family:   Execution,
+				Kind:     pat.kind,
+				Scope:    ClassifyScope(sentence),
+				Subjects: Subjects(sentence),
+			}, true
+		}
+	}
+	for _, pat := range safetyPatterns {
+		if pat.re.MatchString(sentence) {
+			return Claim{
+				Family:     Safety,
+				SafetyKind: pat.safety,
+				Scope:      ClassifyScope(sentence),
+				Subjects:   Identifiers(sentence),
+			}, true
+		}
+	}
+	for _, pat := range structuralPatterns {
+		if !pat.re.MatchString(sentence) {
+			continue
+		}
+		// A structural claim without an identifier names nothing that can be
+		// looked up in the entity diff, so it is not extracted at all rather
+		// than extracted and then reported as unresolvable.
+		ids := Identifiers(sentence)
+		if len(ids) == 0 {
+			continue
+		}
+		return Claim{
+			Family:   Structural,
+			Kind:     Kind(pat.name),
+			Scope:    ClassifyScope(sentence),
+			Subjects: ids,
+		}, true
+	}
+	for _, pat := range readingPatterns {
+		if pat.re.MatchString(sentence) {
+			return Claim{
+				Family:   Reading,
+				Scope:    ClassifyScope(sentence),
+				Subjects: Identifiers(sentence),
+			}, true
+		}
+	}
+	return Claim{}, false
+}
+
+// NamesReadingObject reports whether a reading claim names a class of thing
+// the record can check, such as callers or tests, rather than only a file.
+func NamesReadingObject(sentence string) bool {
+	return readingObjects.MatchString(sentence)
+}
+
+// identifierRe matches a bare code identifier: snake_case, CamelCase, or a
+// dotted or double-colon path. Ordinary prose words are excluded by requiring
+// a separator or an internal capital.
+var identifierRe = regexp.MustCompile(`\b([A-Za-z_][A-Za-z0-9_]*(?:_[A-Za-z0-9_]+)+|[a-z]+[A-Z][A-Za-z0-9]*|[A-Z][a-z0-9]+[A-Z][A-Za-z0-9]*)\b`)
+
+// Identifiers returns the code identifiers and paths a sentence names.
+//
+// Backticked words come first and are trusted most, because an agent quoting
+// a name is naming a symbol. Bare words only count when they look like code,
+// so "removed the legacy shim" yields nothing and is not extracted, while
+// "removed `_legacy_shim`" yields the symbol.
+func Identifiers(sentence string) []string {
+	seen := map[string]bool{}
+	var out []string
+	add := func(s string) {
+		s = strings.TrimSpace(strings.Trim(s, "`\"'.,;:()[]{}"))
+		if s == "" || seen[s] {
+			return
+		}
+		seen[s] = true
+		out = append(out, s)
+	}
+	for _, m := range backtickedRe.FindAllStringSubmatch(sentence, -1) {
+		if strings.ContainsAny(m[1], " ") {
+			for _, t := range transcript.CommandTargets(m[1]) {
+				add(t)
+			}
+			continue
+		}
+		add(m[1])
+	}
+	for _, m := range pathLikeRe.FindAllStringSubmatch(sentence, -1) {
+		add(m[1])
+	}
+	for _, m := range identifierRe.FindAllStringSubmatch(sentence, -1) {
+		add(m[1])
+	}
+	return out
 }
 
 // isNegated reports whether a sentence denies, conditions or advises rather

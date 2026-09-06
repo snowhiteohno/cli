@@ -18,7 +18,10 @@ type Report struct {
 	Checkpoint Checkpoint
 	Inputs     Inputs
 	Rows       []Row
-	Counts     Counts
+	// Unrequested is row type five: added or signature-changed symbols no
+	// prompt asked for.
+	Unrequested *verify.UnrequestedResult
+	Counts      Counts
 	// Notes are conditions a reader must know to read the table correctly:
 	// a missing channel, a degraded rerun, a merge commit.
 	Notes []string
@@ -65,15 +68,20 @@ type Counts struct {
 }
 
 // New assembles a report from the parts an audit produced.
-func New(cp Checkpoint, in Inputs, rows []Row, notes, limitations, commands []string) *Report {
+func New(cp Checkpoint, in Inputs, rows []Row, un *verify.UnrequestedResult,
+	notes, limitations, commands []string) *Report {
 	r := &Report{
 		Version:     Version,
 		Checkpoint:  cp,
 		Inputs:      in,
 		Rows:        rows,
+		Unrequested: un,
 		Notes:       notes,
 		Limitations: limitations,
 		CommandsRun: commands,
+	}
+	if un != nil {
+		r.Counts.Unrequested = len(un.Items)
 	}
 	for _, row := range rows {
 		switch row.Verdict.Status {

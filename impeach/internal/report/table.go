@@ -35,6 +35,9 @@ func Table(w io.Writer, r *Report) error {
 	if len(r.Rows) == 0 {
 		fmt.Fprintf(w, "\nNo claims matched the pattern library. Run with --model CMD to add an extractor,\n"+
 			"or read the transcript with entire checkpoint explain %s --full.\n", r.Checkpoint.ID)
+		// Unrequested detection reads the entity diff and the prompts, so it
+		// works even when no claim was extracted.
+		writeUnrequested(w, r)
 		return writeFooter(w, r)
 	}
 
@@ -83,11 +86,69 @@ func Table(w io.Writer, r *Report) error {
 		}
 	}
 
+	writeUnrequested(w, r)
+
 	fmt.Fprintf(w, "\n%d corroborated   %d impeached   %d uncorroborated   %d unverifiable   %d unrequested\n",
 		r.Counts.Corroborated, r.Counts.Impeached, r.Counts.Uncorroborated,
 		r.Counts.Unverifiable, r.Counts.Unrequested)
 
 	return writeFooter(w, r)
+}
+
+// writeUnrequested prints row type five and, importantly, what was searched
+// for, so a reader can see why a match failed rather than taking the flag on
+// trust.
+func writeUnrequested(w io.Writer, r *Report) {
+	un := r.Unrequested
+	if un == nil {
+		return
+	}
+	fmt.Fprintln(w, "\nUnrequested changes")
+	if un.Skipped {
+		fmt.Fprintf(w, "  Not checked: %s.\n", un.Reason)
+		return
+	}
+	if len(un.Items) == 0 {
+		fmt.Fprintln(w, "  Every added or signature-changed symbol was named in a prompt.")
+		return
+	}
+	head := [5]string{"SYMBOL", "FILE", "KIND", "DEPENDENTS", "SEVERITY"}
+	rows := make([][5]string, 0, len(un.Items))
+	for _, it := range un.Items {
+		sev := string(it.Severity)
+		if it.IsTest {
+			sev += " (test)"
+		}
+		rows = append(rows, [5]string{
+			it.Symbol, it.File, string(it.Kind), fmt.Sprintf("%d", it.Dependents), sev,
+		})
+	}
+	widths := [5]int{}
+	for i := range head {
+		widths[i] = len(head[i])
+	}
+	for _, row := range rows {
+		for i := range row {
+			if l := len(row[i]); l > widths[i] {
+				widths[i] = l
+			}
+		}
+	}
+	writeRow(w, head, widths)
+	for _, row := range rows {
+		writeRow(w, row, widths)
+	}
+	if len(un.PromptTokens) > 0 {
+		fmt.Fprintf(w, "  Prompt tokens searched: %s\n", joinCapped(un.PromptTokens, 30))
+	}
+}
+
+// joinCapped joins tokens, capping the list so the terminal stays readable.
+func joinCapped(items []string, max int) string {
+	if len(items) <= max {
+		return strings.Join(items, " ")
+	}
+	return strings.Join(items[:max], " ") + fmt.Sprintf(" ... and %d more", len(items)-max)
 }
 
 func writeHeader(w io.Writer, r *Report) error {

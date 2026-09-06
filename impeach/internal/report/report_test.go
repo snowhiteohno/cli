@@ -38,7 +38,7 @@ func TestNewCounts(t *testing.T) {
 		row("c2", verify.Corroborated, 2, nil, record.RerunPass, "The build succeeds."),
 		row("c3", verify.Uncorroborated, 3, nil, record.RerunNotRun, "The linter is clean."),
 		row("c4", verify.Unverifiable, 4, nil, record.RerunNotRun, "I reviewed the callers."),
-	}, nil, nil, nil)
+	}, nil, nil, nil, nil)
 
 	want := Counts{Corroborated: 1, Impeached: 1, Uncorroborated: 1, Unverifiable: 1}
 	if r.Counts != want {
@@ -54,7 +54,7 @@ func TestSortPutsImpeachedFirst(t *testing.T) {
 		row("c2", verify.Unverifiable, 2, nil, record.RerunNotRun, "b"),
 		row("c3", verify.Impeached, 3, []string{verify.ReasonStale}, record.RerunPass, "c"),
 		row("c4", verify.Uncorroborated, 4, nil, record.RerunNotRun, "d"),
-	}, nil, nil, nil)
+	}, nil, nil, nil, nil)
 
 	got := make([]string, 0, len(r.Rows))
 	for _, row := range r.Rows {
@@ -73,7 +73,7 @@ func TestSortWithinGroupByTurn(t *testing.T) {
 	r := New(testCheckpoint(), testInputs(), []Row{
 		row("c1", verify.Impeached, 7, []string{verify.ReasonStale}, record.RerunPass, "later"),
 		row("c2", verify.Impeached, 2, []string{verify.ReasonStale}, record.RerunPass, "earlier"),
-	}, nil, nil, nil)
+	}, nil, nil, nil, nil)
 	if r.Rows[0].Claim.Turn != 2 {
 		t.Errorf("first row turn = %d, want the earlier turn 2", r.Rows[0].Claim.Turn)
 	}
@@ -85,7 +85,7 @@ func TestLeadPicksMostReasons(t *testing.T) {
 	r := New(testCheckpoint(), testInputs(), []Row{
 		row("c1", verify.Impeached, 1, []string{verify.ReasonStale}, record.RerunPass, "one reason"),
 		row("c2", verify.Impeached, 2, []string{verify.ReasonStale, verify.ReasonScopeMismatch}, record.RerunPass, "two reasons"),
-	}, nil, nil, nil)
+	}, nil, nil, nil, nil)
 
 	lead, ok := r.Lead()
 	if !ok {
@@ -102,7 +102,7 @@ func TestLeadTieBreaksOnRerun(t *testing.T) {
 	r := New(testCheckpoint(), testInputs(), []Row{
 		row("c1", verify.Impeached, 1, []string{verify.ReasonStale}, record.RerunPass, "passes today"),
 		row("c2", verify.Impeached, 2, []string{verify.ReasonStale}, record.RerunNewFailures, "fails today"),
-	}, nil, nil, nil)
+	}, nil, nil, nil, nil)
 
 	lead, _ := r.Lead()
 	if lead.Claim.ID != "c2" {
@@ -114,7 +114,7 @@ func TestLeadEmptyWhenNothingImpeached(t *testing.T) {
 	t.Parallel()
 	r := New(testCheckpoint(), testInputs(), []Row{
 		row("c1", verify.Corroborated, 1, nil, record.RerunPass, "fine"),
-	}, nil, nil, nil)
+	}, nil, nil, nil, nil)
 	if _, ok := r.Lead(); ok {
 		t.Error("Lead() found an impeachment where there is none")
 	}
@@ -126,7 +126,7 @@ func TestTableRendersHeaderRowsAndCounts(t *testing.T) {
 		row("c1", verify.Impeached, 1, []string{verify.ReasonScopeMismatch, verify.ReasonStale},
 			record.RerunNewFailures, "All tests pass."),
 		row("c2", verify.Corroborated, 2, nil, record.RerunPass, "The build succeeds."),
-	}, []string{"A note about a missing channel."},
+	}, nil, []string{"A note about a missing channel."},
 		[]string{"Claim detection is pattern based."},
 		[]string{"entire graph commit HEAD --json"})
 
@@ -172,7 +172,7 @@ func TestTablePrintsEvidenceForImpeachments(t *testing.T) {
 		{Type: verify.EvidenceRerun, Detail: "new_failures", Text: "2 new failures",
 			Command: "entire graph verify --repo /wt/head"},
 	}
-	r := New(testCheckpoint(), testInputs(), []Row{rw}, nil, nil, nil)
+	r := New(testCheckpoint(), testInputs(), []Row{rw}, nil, nil, nil, nil)
 
 	var buf bytes.Buffer
 	if err := Table(&buf, r); err != nil {
@@ -202,7 +202,7 @@ func TestTableDoesNotExpandCorroboratedRows(t *testing.T) {
 	rw.Verdict.Evidence = []verify.Evidence{
 		{Type: verify.EvidenceCommand, Seq: 41, Text: "pytest -q", Detail: "pass"},
 	}
-	r := New(testCheckpoint(), testInputs(), []Row{rw}, nil, nil, nil)
+	r := New(testCheckpoint(), testInputs(), []Row{rw}, nil, nil, nil, nil)
 
 	var buf bytes.Buffer
 	if err := Table(&buf, r); err != nil {
@@ -215,7 +215,7 @@ func TestTableDoesNotExpandCorroboratedRows(t *testing.T) {
 
 func TestTableNoClaimsMessage(t *testing.T) {
 	t.Parallel()
-	r := New(testCheckpoint(), testInputs(), nil, nil, nil, nil)
+	r := New(testCheckpoint(), testInputs(), nil, nil, nil, nil, nil)
 	var buf bytes.Buffer
 	if err := Table(&buf, r); err != nil {
 		t.Fatal(err)
@@ -234,7 +234,7 @@ func TestTableMergeCommitIsFlagged(t *testing.T) {
 	t.Parallel()
 	cp := testCheckpoint()
 	cp.IsMerge = true
-	r := New(cp, testInputs(), nil, nil, nil, nil)
+	r := New(cp, testInputs(), nil, nil, nil, nil, nil)
 	var buf bytes.Buffer
 	if err := Table(&buf, r); err != nil {
 		t.Fatal(err)

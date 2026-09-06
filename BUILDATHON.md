@@ -193,6 +193,8 @@ Commits on `main`, newest first:
 
 | Commit | Checkpoint | What it proves |
 |---|---|---|
+| phase 6 | see below | All four verifiers, the unrequested detector, 224 tests. |
+| `0bd3033` | `01M1TJCCYXR7ZZTK1H8167G249` | The second demo checkpoint. A real captured session that added an order-level discount and renamed `line_subtotal`. Produces corroborated, uncorroborated and unverifiable rows plus three unrequested symbols. |
 | phase 5 followup | none | The fixture README stopped being true and was corrected. |
 | phase 5 report | none | The stop-point report, written so a fresh session can reconstruct the build. |
 | phase 5 | none | Execution verifier, pattern extractor and table. First end-to-end path, 197 tests. |

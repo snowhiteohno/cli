@@ -81,8 +81,11 @@ type Claim struct {
 	// Text is the exact sentence, quoted verbatim in the report.
 	Text   string
 	Family Family
-	// Kind is set for Execution claims.
+	// Kind is set for Execution claims, and carries the verb for Structural
+	// ones.
 	Kind Kind
+	// SafetyKind distinguishes the two things a safety claim can assert.
+	SafetyKind SafetyKind
 	// Scope is how much the claim covers.
 	Scope Scope
 	// Subjects are the things the claim names: symbols, paths or scope words.
@@ -95,6 +98,35 @@ type Claim struct {
 	// Extractor is "pattern" or "model:<cmd>", shown in the report so a
 	// reader knows whether a model was involved.
 	Extractor string
+}
+
+// SafetyKind is what a safety claim actually asserts.
+//
+// The distinction is load bearing. "No other callers" is about who calls the
+// symbol, so callers contradict it. "No behaviour change" is about what the
+// symbol does, and having callers says nothing about that. Conflating the two
+// impeached an honest rename for the crime of being called.
+type SafetyKind int
+
+const (
+	// SafetyNone means the claim is not a safety claim.
+	SafetyNone SafetyKind = iota
+	// SafetyContainment asserts that little or nothing depends on the symbol.
+	SafetyContainment
+	// SafetyCompatibility asserts that dependents are unaffected.
+	SafetyCompatibility
+)
+
+// String names a SafetyKind.
+func (s SafetyKind) String() string {
+	switch s {
+	case SafetyContainment:
+		return "containment"
+	case SafetyCompatibility:
+		return "compatibility"
+	default:
+		return "none"
+	}
 }
 
 // Extractor produces claims from an event stream.
@@ -116,19 +148,33 @@ func Sentences(text string) []string {
 	var cur strings.Builder
 
 	flush := func() {
-		s := strings.TrimSpace(cur.String())
-		// Markdown emphasis is formatting, not content. Agents write in bold
-		// and bullets, and a claim is quoted verbatim in the report, so a
-		// stray ** in the quote reads as a parser bug rather than as
-		// testimony.
-		s = strings.ReplaceAll(s, "**", "")
+		raw := strings.TrimSpace(cur.String())
+		cur.Reset()
+		if raw == "" {
+			return
+		}
+		// A wholly emphasized line is a section heading, and a heading is not
+		// testimony. Agents write summaries as "**Other callers**" followed by
+		// prose, and reading the heading as a claim produced false verdicts
+		// against text that asserted nothing. This has to be decided before
+		// the emphasis markers are stripped, because stripping them destroys
+		// the only signal that it was a heading.
+		if isHeading(raw) {
+			return
+		}
+		s := strings.ReplaceAll(raw, "**", "")
 		s = strings.ReplaceAll(s, "__", "")
 		s = strings.Trim(s, "-*_# \t")
 		s = strings.TrimSpace(s)
-		if s != "" {
-			out = append(out, s)
+		if s == "" {
+			return
 		}
-		cur.Reset()
+		// A clause ending in a colon introduces what follows rather than
+		// asserting anything itself.
+		if strings.HasSuffix(s, ":") {
+			return
+		}
+		out = append(out, s)
 	}
 
 	runes := []rune(text)
@@ -166,6 +212,32 @@ func Sentences(text string) []string {
 	}
 	flush()
 	return out
+}
+
+// isHeading reports whether a line is a section heading rather than a
+// sentence: a markdown ATX heading, or a line that is entirely wrapped in
+// emphasis markers.
+func isHeading(raw string) bool {
+	t := strings.TrimSpace(strings.Trim(raw, "-*_ \t"))
+	if t == "" {
+		return true
+	}
+	if strings.HasPrefix(raw, "#") {
+		return true
+	}
+	body := strings.TrimSpace(strings.Trim(raw, "-* \t"))
+	// Entirely bold or italic, with no sentence terminator inside.
+	for _, mark := range []string{"**", "__", "*", "_"} {
+		if strings.HasPrefix(raw, mark) && strings.HasSuffix(raw, mark) &&
+			len(raw) > 2*len(mark) {
+			inner := raw[len(mark) : len(raw)-len(mark)]
+			if !strings.Contains(inner, mark) {
+				return true
+			}
+		}
+	}
+	_ = body
+	return false
 }
 
 func isSpace(r rune) bool { return r == ' ' || r == '\t' || r == '\n' || r == '\r' }

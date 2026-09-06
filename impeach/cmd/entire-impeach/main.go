@@ -300,21 +300,30 @@ func assemble(res *checkpoint.Resolved, stream *transcript.Stream, rec *auditRec
 		Changes:      rec.Changes,
 		Rerun:        rec.Rerun,
 		FilesTouched: res.FilesTouched,
-		Impacts:      map[string]*record.Impact{},
+		Impacts:      rec.Impacts,
 		RepoRoot:     opts.repo,
 	}
-	exec := verify.Execution{TestCommand: rec.TestCommand}
+
+	// One verifier per family, chosen by the claim's own family. A claim from
+	// the model extractor goes through the same table, which is the point of
+	// giving both extractors one Claim type.
+	verifiers := map[claims.Family]verify.Verifier{
+		claims.Execution:  verify.Execution{TestCommand: rec.TestCommand},
+		claims.Structural: verify.Structural{},
+		claims.Safety:     verify.Safety{},
+		claims.Reading:    verify.Reading{},
+	}
 
 	rows := make([]report.Row, 0, len(found))
 	for _, c := range found {
-		// Phase 5 ships the execution verifier. The other families are
-		// extracted and verified in phase 6; until then nothing claims to
-		// have checked them, so they are simply not extracted yet.
-		if c.Family != claims.Execution {
+		v, ok := verifiers[c.Family]
+		if !ok {
 			continue
 		}
-		rows = append(rows, report.Row{Claim: c, Verdict: exec.Verify(c, vr)})
+		rows = append(rows, report.Row{Claim: c, Verdict: v.Verify(c, vr)})
 	}
+
+	unrequested := verify.DetectUnrequested(rec.Changes, stream.Prompts())
 
 	ch := stream.Channels()
 	in := report.Inputs{
@@ -333,7 +342,7 @@ func assemble(res *checkpoint.Resolved, stream *transcript.Stream, rec *auditRec
 		ID: res.ID, Commit: res.Commit, Parent: res.Parent,
 		Agent: res.Agent, SessionIDs: res.SessionIDs, IsMerge: res.IsMerge,
 	}
-	return report.New(cp, in, rows, notes, limitations(), log.Calls())
+	return report.New(cp, in, rows, unrequested, notes, limitations(), log.Calls())
 }
 
 func adapterName(s *transcript.Stream, opts *options) string {
@@ -369,6 +378,8 @@ func failOnMet(r *report.Report, failOn string) bool {
 type auditRecord struct {
 	Changes *record.CommitChanges
 	Rerun   *record.Rerun
+	// Impacts caches graph impact results by symbol name.
+	Impacts map[string]*record.Impact
 	// TestCommand is the command actually used, from --test or .impeach.json.
 	TestCommand string
 	// ChangesErr records why the entity diff is unavailable, if it is. A
@@ -379,7 +390,10 @@ type auditRecord struct {
 
 func buildRecord(ctx context.Context, run runner.Runner, repo string, res *checkpoint.Resolved,
 	wt *record.Worktrees, opts *options, stdout, stderr *os.File) *auditRecord {
-	out := &auditRecord{Rerun: &record.Rerun{Status: record.RerunNotRun}}
+	out := &auditRecord{
+		Rerun:   &record.Rerun{Status: record.RerunNotRun},
+		Impacts: map[string]*record.Impact{},
+	}
 
 	g := &record.Graph{Runner: run}
 	changes, err := g.Commit(ctx, wt.Head, res.Commit)
@@ -387,6 +401,24 @@ func buildRecord(ctx context.Context, run runner.Runner, repo string, res *check
 		out.ChangesErr = err.Error()
 	} else {
 		out.Changes = changes
+		// Impact is asked once per changed symbol that a safety claim could
+		// be about, and once per added symbol so the unrequested severity has
+		// a dependent count. Body-only changes are skipped: nothing rests on
+		// their blast radius.
+		for _, ch := range changes.Changes {
+			if ch.Kind == record.BodyChanged || ch.Name == "" {
+				continue
+			}
+			if _, done := out.Impacts[ch.Name]; done {
+				continue
+			}
+			imp, ierr := g.Impact(ctx, wt.Head, ch.Name, true)
+			if ierr != nil {
+				fmt.Fprintf(stderr, "entire-impeach: %v\n", ierr)
+				continue
+			}
+			out.Impacts[ch.Name] = imp
+		}
 	}
 
 	test, setup := opts.test, ""

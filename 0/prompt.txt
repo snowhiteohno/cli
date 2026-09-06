@@ -1,0 +1,7 @@
+Staged changes are ready in this repository. Your only job is to commit them so the commit is captured as an Entire checkpoint.
+
+Do exactly this and nothing else:
+1. Run: git -c commit.gpgsign=false commit -F /private/tmp/claude-501/-Users-mallikasuri-Desktop-Impeach/fe2834f1-d509-4f4c-b50e-5282cddb8b8a/scratchpad/phase9-msg.txt
+2. Run: git log -1 --format='%H' and report the sha.
+
+Do not stage anything else, do not amend, do not modify any file, do not push, and do not run tests.

@@ -168,7 +168,9 @@ func TestNonClaimsAreRejected(t *testing.T) {
 // scope is the one test file it names.
 func TestProbeSessionSentenceIsAClaim(t *testing.T) {
 	t.Parallel()
-	text := "**Tests** — `./.venv/bin/python -m pytest tests/test_api.py` from `impeach/fixtures/app`: 4 passed."
+	// Close to what the probe session actually wrote. The verbatim sentence
+	// lives in testdata; the dash is a hyphen here to keep this file plain.
+	text := "**Tests** - `./.venv/bin/python -m pytest tests/test_api.py` from `impeach/fixtures/app`: 4 passed."
 	got, err := Pattern{}.Extract([]transcript.Event{
 		{Seq: 12, Kind: transcript.AssistantText, Turn: 3, Text: text},
 	})

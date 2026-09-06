@@ -1,0 +1,64 @@
+{
+  "cli_version": "0.10.6-nightly.202609050622.61dac01ed.0.20260905201708-3dbdf8b83c39+dirty",
+  "checkpoint_id": "01M1TT9NTRCH5XDJJYNBTFWY6D",
+  "session_id": "c9bdaf5b-fb6b-4211-a31b-a658c2b5d5b9",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-06T07:35:34.112984Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".impeach.json",
+    "BUILDATHON.md",
+    "impeach/NOTES.md",
+    "impeach/README.md",
+    "impeach/cmd/entire-impeach/main.go",
+    "impeach/cmd/entire-impeach/replay_test.go",
+    "impeach/docs/PRD.md"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-opus-5",
+  "turn_id": "db16b81d4036",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 2,
+    "cache_creation_tokens": 52241,
+    "cache_read_tokens": 16035,
+    "output_tokens": 179,
+    "api_call_count": 1
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-06T07:35:34.109107Z",
+    "agent_lines": 0,
+    "agent_removed": 0,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 21,
+    "total_committed": 0,
+    "total_lines_changed": 21,
+    "agent_percentage": 0,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 125,
+      "user_lines_removed": 21,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        ".impeach.json": 5,
+        "BUILDATHON.md": 6,
+        "impeach/NOTES.md": 31,
+        "impeach/README.md": 39,
+        "impeach/cmd/entire-impeach/main.go": 23,
+        "impeach/cmd/entire-impeach/replay_test.go": 19,
+        "impeach/docs/PRD.md": 2
+      },
+      "user_removed_per_file": {
+        "BUILDATHON.md": 6,
+        "impeach/README.md": 13,
+        "impeach/cmd/entire-impeach/main.go": 2
+      }
+    }
+  ]
+}

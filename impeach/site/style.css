@@ -463,3 +463,61 @@ tbody tr:hover { background: color-mix(in srgb, var(--rule) 30%, transparent); }
 
 footer { border-top: 1px solid var(--rule); padding: 28px 0 56px; }
 footer p { color: var(--ink-2); }
+
+/* ------------------------------------------------- webgl path only */
+
+/* When the shader is driving, it owns the record: the ink is under the paper
+   and only shows where the light falls. The DOM copy stays in the layout,
+   because the shader measures it to place the ink, but it is not painted.
+   visibility rather than display, so the geometry survives.
+
+   Without JavaScript, or without WebGL2, none of this applies and the record
+   is ordinary visible text. That is the point of putting it here and not in
+   the base rule. */
+.hero.webgl .record { visibility: hidden; }
+.hero.webgl .record li { visibility: hidden; }
+
+/* --------------------------------------------------- no-webgl fallback */
+
+/* A lesser version of the same idea, not a different page. Paper from an
+   inline SVG turbulence filter, the lamp as a radial mask over the record,
+   the bleed lines still red, and the stamp still lands. */
+.hero.no-webgl canvas { display: none; }
+
+.hero.no-webgl {
+  --lx: 50%;
+  --ly: 58%;
+  background-color: var(--paper);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.055'/%3E%3C/svg%3E");
+}
+
+/* The lamp. A warm pool of light that follows the cursor. */
+.hero.no-webgl::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle 22vmin at var(--lx) var(--ly),
+    color-mix(in srgb, var(--lamp) 85%, transparent) 0%,
+    color-mix(in srgb, var(--lamp) 40%, transparent) 45%,
+    transparent 72%);
+}
+
+/* The record is real text, revealed only under the lamp. */
+.hero.no-webgl .record {
+  opacity: 0.18;
+  -webkit-mask-image: radial-gradient(circle 22vmin at var(--lx) var(--ly),
+    #000 0%, rgba(0,0,0,0.75) 42%, transparent 70%);
+  mask-image: radial-gradient(circle 22vmin at var(--lx) var(--ly),
+    #000 0%, rgba(0,0,0,0.75) 42%, transparent 70%);
+}
+
+/* Under the lamp the ink reads at full strength. Two layers, because a mask
+   cannot raise opacity on its own. */
+.hero.no-webgl .record li { opacity: 1; }
+.hero.no-webgl .record li.bleeds { color: var(--bleed); font-weight: 700; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero.no-webgl .record { opacity: 0.85; }
+}

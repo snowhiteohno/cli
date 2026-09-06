@@ -256,7 +256,114 @@ caught.
 
 ## Noon Curveball: what changed and how we adapted
 
-pending
+**The constraint.** Reports must be safe to produce in a sensitive
+repository, and a verdict must not be able to claim more confidence than the
+surviving evidence supports. Concretely: no opt-in path may send anything off
+the machine when the repository forbids it, and a redacted or partial evidence
+channel must not be able to yield a corroborated verdict.
+
+**Why it was cheap.** The four-boundary design was built for this and it held.
+The constraint-change playbook in `docs/ARCHITECTURE.md` already had an entry
+for a redacted transcript, and it already said the right thing: "unverifiable
+rows with the channel named". So this was implementation inside named
+boundaries, not a redesign. `entire graph impact` on the three
+privacy-boundary entry points confirmed it before any edit: every non-test
+path converges on three functions in one file, and `verify.Record` is used by
+all four verifiers, which made it the single insertion point for gating one
+field that reached all of them. Nothing outside
+`internal/{transcript,verify,report}` and `cmd/entire-impeach/main.go`
+changed. That impact output is recorded in `impeach/NOTES.md`, before the
+change rather than after.
+
+**What was already compliant, and was cited rather than rebuilt.**
+`docs/SECURITY_AND_ACCESS.md` had already committed to no network on the
+default path, transcripts never written to `--out`, bounded and scrubbed
+evidence excerpts, and unverifiable as a state rather than an error. All four
+were built in earlier phases. None was reimplemented.
+
+**Three changes.**
+
+*Sensitive mode is a refusal, not a default.* `--sensitive`, or
+`"sensitive": true` in a committed `.impeach.json` so the repository itself
+carries the constraint rather than relying on whoever types the command. In
+that mode `--model` is rejected with a non-zero exit and a message naming the
+command it refused. Not ignored and not warned about: a warning would still
+have sent the text. The refusal happens at the entry point, before the runner
+is even constructed, and a test asserts zero calls were made, because refusing
+after the first turn has been sent would be theatre. The report header states
+the mode verbatim.
+
+*Completeness gates the verdict.* Every evidence channel now carries an
+explicit state: present, partial, redacted, absent. Corroborated is reachable
+only from a channel that is present. A partial or redacted channel can still
+impeach, because a contradiction from an intact channel survives redaction of
+another, but it can never corroborate: what was removed could be exactly what
+would have contradicted the claim. Such a verdict degrades to unverifiable
+with the channel named and the reason given. The asymmetry is the point.
+Absence of evidence is not evidence of honesty.
+
+Two judgement calls inside that gate are worth stating, because both went
+against the first implementation. Uncorroborated is gated as well as
+corroborated: on a readable channel it means the record held nothing either
+way, but on a redacted one that is the wrong statement, because the channel
+could not be read at all, so its silence proves nothing and reporting it as
+uncorroborated would imply a search that never happened. And Graph became its
+own channel: the first version gated structural and safety claims on the edits
+channel, which was wrong, since Graph reads the code at the commit rather than
+the transcript, so redaction leaves a Graph-derived verdict intact. What gates
+those is Graph failing to answer or failing to parse the file.
+
+*A context ledger on the run.* Each channel and its state, reported whether or
+not anything is missing, because a reader needs to know what the verdicts were
+computed from and not only what they were. Above the rows in the table, above
+the summary strip in the HTML, and in the JSON as a `channels` map with
+per-channel reasons alongside `context_complete`, `context_note` and
+`claims_gated_by_channel`. `--fail-on incomplete` lets CI refuse a run whose
+evidence was incomplete even when nothing was impeached, reusing exit 2; the
+0, 1, 2 contract stays settled. Rows gated by a channel now expand in the
+terminal the way impeached rows do, because "unverifiable" on its own reads as
+the tool shrugging when it actually means the evidence was removed and the row
+is saying so.
+
+**How it is proved.** The asymmetry is asserted from both directions against
+one recorded scenario, which is the strongest form available. Run
+`redacted-toollog` with `--no-rerun` and the claim that its own command output
+would otherwise have supported becomes `unverifiable` with
+`channel-incomplete`. Run the same scenario with the rerun and the same claim
+is `impeached` by `contradicted-rerun`. Redaction cannot buy a corroboration
+and cannot escape a contradiction:
+
+```
+Context: commands redacted, reads present, edits present, prompts present, graph present.
+Context is incomplete: commands is redacted. 1 claim could not be corroborated as a result.
+
+VERDICT       FAMILY     CLAIM                          REASON              RERUN
+unverifiable  execution  "pytest tests/test_api.py: 4   channel incomplete  not run
+                          passed."
+```
+
+311 tests, `go vet` clean, all packages passing under `-race`.
+
+**A fifth false positive, found because of this work.** The custom-runner
+fallback in the execution verifier matched transcript commands against the
+first word of the configured test command. For a compound command like
+`cd app && pytest -q` that word is `cd`, which appears in almost every shell
+command, so an unrelated failing `git status` was being read as a failing test
+run and reported as `contradicted-output`. Redaction surfaced it by turning
+that git failure into unparseable output while leaving its error flag set.
+Fixed by skipping the fallback entirely when the built-in patterns already
+recognise the runner, and otherwise choosing a token that skips shell
+builtins, with an unmatchable sentinel when nothing distinctive remains. A
+loose match there manufactures evidence, which is worse than failing to
+recognise a runner. Three tests pin it.
+
+**One input never arrived.** The instruction referred to an attached fixture
+and none was attached. Rather than block, `redacted-toollog` is derived from
+the real `rerun-regression` recording with every `Bash` tool result replaced by
+a redaction marker, and its `PROVENANCE.md` says so plainly rather than
+passing it off as captured. A real redacted checkpoint can replace that
+directory without touching a line of the tests, because the assertions are
+about behaviour and not about the file.
 
 ## Checkpoint links and what each checkpoint proves
 

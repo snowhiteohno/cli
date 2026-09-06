@@ -1016,3 +1016,23 @@ The supplied fixture never arrived, so `redacted-toollog` is derived from the
 real `rerun-regression` recording with redaction applied, and says so in its
 `PROVENANCE.md`. A real redacted checkpoint can replace that directory without
 touching a line of the tests, because the assertions are about behaviour.
+
+### Curveball section written, and the HTML gap it exposed
+
+`BUILDATHON.md` Curveball section filled: the constraint, why the
+four-boundary design made it cheap, what was already compliant and cited
+rather than rebuilt, the three changes, the two judgement calls that went
+against the first implementation, how the asymmetry is proved from both
+directions, the fifth false positive, and the fixture that never arrived. All
+nine required sections are now present in the guide's fixed order.
+
+Writing it surfaced a gap in the change itself. The HTML template gained the
+context section but was never rendered and looked at, and with no ledger it
+emitted a bare full stop. Fixed to omit the section entirely in that case, and
+four HTML tests added: the ledger names the redacted channel, intact channels
+are reported too so it reads as a statement rather than a blanket warning, the
+sentence sits above the summary strip, and sensitive mode appears in the
+header. Verified by rendering the redacted report and looking at it.
+
+That is now the sixth defect in this build found by running or viewing the
+thing rather than reading it.

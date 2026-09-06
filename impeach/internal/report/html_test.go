@@ -8,6 +8,7 @@ import (
 
 	"github.com/entireio/cli/impeach/internal/claims"
 	"github.com/entireio/cli/impeach/internal/record"
+	"github.com/entireio/cli/impeach/internal/transcript"
 	"github.com/entireio/cli/impeach/internal/verify"
 )
 
@@ -368,5 +369,86 @@ func TestHTMLWideContentIsContained(t *testing.T) {
 	}
 	if !strings.Contains(out, "max-width: 620px") {
 		t.Error("no narrow-width handling")
+	}
+}
+
+// The context ledger goes above the summary strip, because it qualifies every
+// count in it. A reader who sees a corroborated count without knowing a
+// channel was redacted has been told something misleading.
+func TestHTMLRendersTheContextLedger(t *testing.T) {
+	t.Parallel()
+	l := &transcript.Ledger{}
+	l.Set(transcript.ChannelCommands, transcript.ChannelRedacted,
+		"content in the commands channel was redacted before the transcript was written")
+	l.Set(transcript.ChannelReads, transcript.ChannelPresent, "")
+	l.Set(transcript.ChannelEdits, transcript.ChannelPresent, "")
+	l.Set(transcript.ChannelPrompts, transcript.ChannelPresent, "")
+	l.Set(transcript.ChannelGraph, transcript.ChannelPresent, "")
+
+	rw := row("c1", verify.Unverifiable, 3, []string{verify.ReasonChannelIncomplete},
+		record.RerunNotRun, "All tests pass.")
+	r := New(testCheckpoint(), testInputs(), []Row{rw}, nil, nil, nil, nil)
+	r.Ledger = l
+
+	out := renderHTML(t, r)
+	if !strings.Contains(out, "commands redacted") {
+		t.Errorf("the ledger does not name the redacted channel:\n%s", out)
+	}
+	if !strings.Contains(out, "reads present") {
+		t.Error("intact channels must be reported too, or the ledger reads as a blanket warning")
+	}
+	if !strings.Contains(out, "Context is incomplete") {
+		t.Error("expected the incomplete-context sentence")
+	}
+	// It has to sit above the summary strip, not below it.
+	ctx := strings.Index(out, "Context is incomplete")
+	strip := strings.Index(out, "corroborated</button>")
+	if ctx < 0 || strip < 0 || ctx > strip {
+		t.Errorf("the context sentence must appear above the summary strip (ctx %d, strip %d)", ctx, strip)
+	}
+}
+
+// With no ledger the section is omitted entirely rather than rendering an
+// empty line or a bare full stop.
+func TestHTMLOmitsContextSectionWithoutALedger(t *testing.T) {
+	t.Parallel()
+	out := renderHTML(t, New(testCheckpoint(), testInputs(), nil, nil, nil, nil, nil))
+	if strings.Contains(out, "<h2>Context</h2>") {
+		t.Error("the context section should be omitted when there is no ledger")
+	}
+}
+
+// An intact run still reports its ledger, so a reader can see the run had
+// everything rather than having to infer it from the absence of a warning.
+func TestHTMLReportsAnIntactLedgerToo(t *testing.T) {
+	t.Parallel()
+	l := &transcript.Ledger{}
+	for _, c := range transcript.AllChannels {
+		l.Set(c, transcript.ChannelPresent, "")
+	}
+	r := New(testCheckpoint(), testInputs(), nil, nil, nil, nil, nil)
+	r.Ledger = l
+
+	out := renderHTML(t, r)
+	if !strings.Contains(out, "<h2>Context</h2>") {
+		t.Error("an intact ledger should still be reported")
+	}
+	if strings.Contains(out, "Context is incomplete") {
+		t.Error("an intact ledger must not claim incomplete context")
+	}
+}
+
+// Sensitive mode is stated verbatim in the HTML header, as it is in the
+// terminal.
+func TestHTMLStatesSensitiveMode(t *testing.T) {
+	t.Parallel()
+	r := New(testCheckpoint(), testInputs(), nil, nil, nil, nil, nil)
+	r.Sensitive = true
+	out := renderHTML(t, r)
+	if !strings.Contains(out, "Mode: sensitive") {
+		t.Error("the HTML report does not state sensitive mode")
+	}
+	if !strings.Contains(out, "nothing leaves this machine") {
+		t.Error("the mode line should say what it means")
 	}
 }

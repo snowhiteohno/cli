@@ -36,11 +36,13 @@
   {{end}}
 </section>
 
+{{if .ChannelLedger}}
 <section>
   <h2>Context</h2>
   <p class="meta">{{.ChannelLedger}}.</p>
   {{if .ContextSentence}}<p class="incomplete">{{.ContextSentence}}</p>{{end}}
 </section>
+{{end}}
 
 <section>
   <h2>Summary</h2>

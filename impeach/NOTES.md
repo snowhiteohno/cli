@@ -1527,3 +1527,65 @@ test were staged by hand rather than committing everything present.
 `HANDOFF.md` says one agent session at a time; that rule was not being followed
 during this round, and the mitigation was to stage by path and never by
 wildcard.
+
+## The gen-site footgun, closed
+
+`gen-site` wrote an `index.html` and a `style.css` from its pre-rebuild
+template into whatever `--out` named, defaulting to `site`. The README told
+people to run exactly that, from `cd impeach`, so following the documentation
+replaced the 20,909 byte hand-written page with the 8,778 byte generated one
+and the 18,361 byte stylesheet with a 6,611 byte copy of the report's.
+
+**The drift gate could not catch it, which is the part worth keeping.** All
+seven assertions in `site_test.go` pass on the generated page: its hero is
+also lifted verbatim from the sample, it carries no machine paths, it loads
+nothing from another host, its stylesheet trivially agrees with `report.css`
+on every shared token because it is a copy of it, and it mentions the ref
+fetch and all four verdicts because those tests were written against it in the
+first place. Checked by generating into a temp directory and running the
+assertions against the output rather than by reasoning about them. The gate
+was built to catch a hand-edited page and is blind to a regenerated one, so
+the loss would have been silent and green.
+
+The fix is a marker on generated output and a refusal to write over an
+existing `index.html` or `style.css` that lacks it. Four decisions inside
+that:
+
+- **The refusal is the whole run, not the offending file.** Refreshing
+  `sample/` alone leaves the hand-written hero quoting evidence that has
+  moved, which breaks the byte-identity guarantee just as thoroughly and less
+  visibly. The check therefore runs before anything is written, so a refusal
+  leaves the directory untouched, which a test asserts by checking that
+  neither `sample/` nor `style.css` appeared.
+- **The stylesheet is protected too, and this corrected a document.**
+  `site/README.md` had said gen-site was safe for "the sample report and the
+  stylesheet copy". It was not: `style.css` is hand written and carries the
+  page's type and layout, and overwriting it with the report's stylesheet
+  strips all of that while leaving the shared tokens in agreement, so the one
+  test covering that file still passes. The advice that was supposed to keep
+  the page safe named the second way to destroy it.
+- **`sample/` is deliberately not protected.** Overwriting it is the intended
+  act, since it is the artifact the command exists to refresh.
+- **An unreadable output file is not treated as absence.** `os.IsNotExist` is
+  the only error that means "nothing there"; anything else is reported, since
+  the alternative is overwriting a file we could not read.
+
+**The marker had to move, and the test is what found out.** It began as an
+HTML comment and vanished: `html/template` strips comments as it parses, so
+the rendered page carried nothing, gen-site could not recognise its own output
+and refused to run twice into its own directory. That is a marker failing in
+the unsafe direction, and it compiled and rendered without complaint. It now
+rides on `<meta name="generator">`, which survives, while the stylesheet keeps
+a CSS comment because it is copied rather than rendered.
+
+Verified end to end by running the old README command against the real site:
+it exits 1, prints what to do instead, and a checksum over every file in
+`impeach/site` is identical before and after.
+
+Left as it is, deliberately: the hero block stays hand-carried into
+`index.html` rather than read from `sample/impeach.json` at build time. There
+is no build step for a hand-written page, and the coupling is enforced by
+`TestLandingHeroMatchesTheSampleReportByteForByte` instead. Refreshing the
+sample means carrying the new block across by hand, and the test fails until
+someone does. That is a manual step with a guard on it, which is a different
+thing from a gap.

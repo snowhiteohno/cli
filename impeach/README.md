@@ -260,26 +260,29 @@ fixtures are scrubbed of absolute paths, user names and author identity.
 `site/` is a single self-contained page for someone who will not clone
 anything: the lead impeachment, what each verdict means, what gets checked,
 install and reproduce commands, the full sample report in an iframe, and the
-limitations. No external requests, no fonts, no analytics, no script element
-at all.
+limitations. It makes no network requests and carries no analytics. It does
+ship two self-hosted woff2 fonts and one script, which drives the WebGL hero;
+everything the page says is in the markup and readable with scripts disabled.
 
-It is generated, not hand-authored:
+**It is written by hand.** `index.html`, `style.css`, `site.js` and `fonts/`
+are authored files. `sample/impeach.html` and `sample/impeach.json` are not:
+they come from a real audit and must not be edited.
 
-```
-# 1. Produce a real report by replaying a committed scenario. Offline.
-entire impeach 01M1TET4N33VMY0DTHNZKV5HT9 --repo . --setup ""   --test 'cd impeach/fixtures/app && ./.venv/bin/python -m pytest -q --tb=no -rA'   --replay impeach/fixtures/recorded/rerun-regression --out /tmp/sample
+The two are coupled by one guarantee. The page's `<section id="lead">` block
+is the same bytes as the report's, so the two surfaces cannot drift into
+giving different accounts of the same audit. A test asserts that byte match,
+and others assert no absolute paths, no cross-host resources, and that
+`site/style.css` and `internal/report/report.css` resolve every shared token
+to the same value.
 
-# 2. Build the site from it.
-cd impeach && go run ./internal/report/gen-site --from /tmp/sample --repo ..
-```
-
-`gen-site` copies the report's own stylesheet, scrubs machine paths out of the
-sample, and **lifts the lead-impeachment block out of the sample report
-verbatim** rather than rewriting it. That is the point: the page's hero and
-the report's hero are the same bytes, so the two surfaces cannot drift into
-giving different accounts of the same audit. A test asserts the byte match,
-and others assert no absolute paths, no external requests and no drift between
-`site/style.css` and `internal/report/report.css`.
+`internal/report/gen-site` produces the sample report and, from an older
+template, a generated page of its own. Running it against `site/` used to
+replace the hand-written page and stylesheet with that older version while
+every test stayed green, because the generated page satisfies the same
+assertions. It now refuses: generated files carry a marker and gen-site will
+not write over an existing `index.html` or `style.css` that lacks one. To
+refresh the sample, generate elsewhere and copy by hand. See
+[`site/README.md`](site/README.md) for the procedure and the reasoning.
 
 **It is live at <https://snowhiteohno.github.io/cli/>.**
 

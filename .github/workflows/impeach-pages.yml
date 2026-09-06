@@ -3,11 +3,11 @@
 # Added by the Impeach build. It does not touch any of the upstream CLI
 # workflows in this directory.
 #
-# Why it publishes the committed site rather than building it here: generating
-# the page needs a real audit, which needs the Entire CLI, the entire-graph
-# plugin and a checkpoint, none of which exist in this runner. So the site is
-# generated locally with `go run ./internal/report/gen-site` and committed, and
-# this workflow's job is to refuse to publish it if it has drifted.
+# Why it publishes the committed site rather than building it here: the page is
+# hand written, and the sample report it shows needs a real audit, which needs
+# the Entire CLI, the entire-graph plugin and a checkpoint, none of which exist
+# in this runner. So the site is committed, and this workflow's job is to
+# refuse to publish it if it has drifted from the report it shows.
 #
 # The drift check is the point. The landing page's hero is lifted verbatim from
 # the sample report, so the two surfaces cannot disagree about what the tool

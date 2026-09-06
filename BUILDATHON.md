@@ -606,16 +606,15 @@ genuinely open, each item verified against the tree.
 - **A second transcript adapter.** There is one, claude-code. Other agents
   degrade to unverifiable rows by design, which is truthful output rather than
   a failure, so this widens coverage rather than repairing a defect.
-- **`gen-site` will overwrite the landing page.** It still renders an
-  `index.html` of its own from a Go template, while the shipped page is hand
-  written, so running it replaces that page with the older generated version.
-  Nothing runs it today and the Pages workflow publishes the committed
-  directory rather than building it, so the site is not at risk right now, but
-  it is a live footgun for the next person. `impeach/site/README.md` records
-  the safe subset to run until the template is updated. The same fix covers a
-  second half: the hero's testimony and record lines are hardcoded in
-  `index.html` to match `sample/impeach.json`, and should be read from that
-  file at build time instead.
+- ~~**`gen-site` will overwrite the landing page.**~~ **Fixed.** It rendered
+  an `index.html` and a `style.css` of its own over the hand-written ones, and
+  the tests could not see it happen, because the generated page satisfies the
+  same assertions. Generated files now carry a marker and gen-site refuses to
+  write over an existing page or stylesheet that lacks one, whole run rather
+  than per file. Verified by running the exact command the README used to
+  give: it exits 1 and the site is byte-identical afterwards. The docs that
+  taught the footgun were corrected in the same change, including one that
+  called overwriting the stylesheet safe.
 - **Two more recorded replay scenarios.** Three are committed:
   `discount-rename`, `rerun-regression` and `redacted-toollog`. The plan named
   five. The `Recording` and replaying `Fake` halves are done and tested round

@@ -9,6 +9,7 @@ const indexTemplate = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="generator" content="` + genMarker + `">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' 'unsafe-inline'; frame-src 'self'; img-src data:">
 <title>Impeach: cross-examine what an agent said it did</title>

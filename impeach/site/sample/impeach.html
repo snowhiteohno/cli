@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:">
+<title>Impeach report for checkpoint 01M1TET4N33VMY0DTHNZKV5HT9</title>
+<style>/* Tokens from docs/FRONTEND_SPEC.md. The design reads as a case file, not a
+   dashboard: text does the work and colour is spent on verdicts only. */
+:root {
+  --paper: #FFFFFF;
+  --ink: #1C1B1A;
+  --ink-2: #5B5854;
+  --rule: #D9D6D0;
+  --corroborated: #1F6B3A;
+  --impeached: #8C1D18;
+  --uncorroborated: #4A5568;
+  --unverifiable: #8A8F98;
+  --focus: #1A3D6B;
+  --sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #17191C;
+    --ink: #E8E6E1;
+    --ink-2: #A9A6A0;
+    --rule: #33363B;
+    --corroborated: #4FA86E;
+    --impeached: #D9534F;
+    --uncorroborated: #9AA5B8;
+    --unverifiable: #8A8F98;
+    --focus: #7FA6DE;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 24px;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 15px/1.55 var(--sans);
+}
+
+main { max-width: 880px; margin: 0 auto; }
+
+section { margin-bottom: 48px; }
+
+h1, h2 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--rule);
+}
+
+h1 { font-size: 22px; }
+
+p { max-width: 72ch; margin: 0 0 10px; }
+
+code, pre, .mono { font-family: var(--mono); }
+
+a { color: var(--focus); }
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.meta { color: var(--ink-2); font-size: 13px; margin-bottom: 4px; }
+
+.label {
+  color: var(--ink-2);
+  font-size: 13px;
+  margin: 0 0 4px;
+}
+
+/* The lead impeachment: testimony above, record below. The one memorable
+   element on the page. */
+.testimony {
+  font-family: var(--mono);
+  font-size: 28px;
+  line-height: 1.3;
+  margin: 0 0 4px;
+  max-width: none;
+}
+
+.turn { font-size: 13px; color: var(--ink-2); font-family: var(--sans); }
+
+.record { margin: 0 0 12px; padding-left: 22px; font-size: 15px; }
+.record li { margin-bottom: 4px; }
+.record .mono { font-size: 13px; }
+
+.verdict-line { font-size: 15px; }
+
+/* Verdict colour appears as the word itself, a 4px left border on an evidence
+   panel, and the counts in the summary strip. Never as a fill behind text. */
+.v-corroborated { color: var(--corroborated); font-weight: 600; }
+.v-impeached { color: var(--impeached); font-weight: 600; }
+.v-uncorroborated { color: var(--uncorroborated); font-weight: 600; }
+.v-unverifiable { color: var(--unverifiable); font-weight: 600; }
+
+.strip { font-size: 15px; }
+.strip button {
+  font: inherit;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  padding: 0;
+  margin-right: 16px;
+  cursor: pointer;
+}
+.strip button:hover { text-decoration: underline; }
+.strip button[aria-pressed="true"] { font-weight: 600; }
+.strip button[aria-pressed="true"].f-corroborated { color: var(--corroborated); }
+.strip button[aria-pressed="true"].f-impeached { color: var(--impeached); }
+.strip button[aria-pressed="true"].f-uncorroborated { color: var(--uncorroborated); }
+.strip button[aria-pressed="true"].f-unverifiable { color: var(--unverifiable); }
+
+.controls { margin-bottom: 10px; }
+.controls button {
+  font: inherit;
+  font-size: 13px;
+  color: var(--focus);
+  background: none;
+  border: 0;
+  padding: 0;
+  margin-right: 14px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+caption { text-align: left; color: var(--ink-2); font-size: 13px; padding-bottom: 8px; }
+th, td { text-align: left; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+/* Symbol names and paths are long. Wrapping them keeps the last columns on
+   screen instead of pushing Severity out of the container. */
+td.mono { overflow-wrap: anywhere; }
+th { font-weight: 600; }
+
+/* Wide content scrolls inside its own container so the page never scrolls
+   sideways. */
+.scroll { overflow-x: auto; }
+
+.rows { border-top: 1px solid var(--rule); }
+
+details { border-bottom: 1px solid var(--rule); }
+
+summary {
+  display: grid;
+  grid-template-columns: 8.5rem 6rem 1fr 10rem 7rem 3rem;
+  gap: 10px;
+  padding: 8px 0;
+  cursor: pointer;
+  font-size: 13px;
+  align-items: start;
+}
+
+.colhead {
+  display: grid;
+  grid-template-columns: 8.5rem 6rem 1fr 10rem 7rem 3rem;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 13px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--rule);
+}
+
+summary::-webkit-details-marker { display: none; }
+summary::marker { content: ""; }
+
+/* The claim is never truncated here. Truncation is for the terminal only. */
+.claim { font-family: var(--mono); overflow-wrap: anywhere; }
+
+.reason, .rerun, .family, .turncell { color: var(--ink-2); }
+
+/* Colour alone must not carry meaning, so unverifiable also carries a hatch
+   that survives greyscale and print. */
+.hatched {
+  background-image: repeating-linear-gradient(
+    45deg, transparent, transparent 4px,
+    color-mix(in srgb, var(--unverifiable) 22%, transparent) 4px,
+    color-mix(in srgb, var(--unverifiable) 22%, transparent) 8px);
+}
+
+.evidence {
+  border-left: 4px solid var(--rule);
+  padding: 8px 0 12px 14px;
+  margin-bottom: 8px;
+}
+.evidence.e-corroborated { border-left-color: var(--corroborated); }
+.evidence.e-impeached { border-left-color: var(--impeached); }
+.evidence.e-uncorroborated { border-left-color: var(--uncorroborated); }
+.evidence.e-unverifiable { border-left-color: var(--unverifiable); }
+
+.evidence ul { list-style: none; padding: 0; margin: 8px 0 0; }
+.evidence li { margin-bottom: 8px; font-size: 13px; }
+.etype { color: var(--ink-2); }
+
+/* An output excerpt scrolls sideways and never wraps, so a runner's columns
+   stay aligned. */
+pre {
+  font-size: 13px;
+  margin: 4px 0;
+  padding: 6px 8px;
+  border: 1px solid var(--rule);
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.tokens { color: var(--ink-2); font-size: 13px; }
+
+/* Incomplete context is a caveat on every verdict below it, so it reads in
+   the uncorroborated colour rather than as ordinary secondary text. It is not
+   a fill: the colour is on the words. */
+.incomplete { color: var(--uncorroborated); font-weight: 600; }
+
+footer { color: var(--ink-2); font-size: 13px; border-top: 1px solid var(--rule); padding-top: 12px; }
+footer p { max-width: 72ch; }
+
+@media (max-width: 620px) {
+  summary { grid-template-columns: 1fr; gap: 2px; }
+  .colhead { display: none; }
+  .testimony { font-size: 20px; }
+}
+
+@media print {
+  body { padding: 0; color: #000; background: #fff; }
+  .controls, .strip button { display: none; }
+  main { max-width: 100%; }
+  details { break-inside: avoid; }
+  details[open] > summary ~ * { display: block; }
+  pre { white-space: pre-wrap; }
+}
+</style>
+</head>
+<body>
+<main>
+
+<section>
+  <h1>Impeach 0.1.0 report</h1>
+  <p class="meta">Checkpoint 01M1TET4N33VMY0DTHNZKV5HT9 (commit 458bb14, parent 650a885), 1 session, agent Claude Code.</p>
+  <p class="meta">Adapter claude-code. Extractors: pattern. Test command: cd impeach/fixtures/app &amp;&amp; { test -d .venv || { python3 -m venv .venv &amp;&amp; ./.venv/bin/py.... Rerun: yes. Model command: none.</p>
+  
+  
+  
+</section>
+
+<section id="lead">
+  <h2>Lead impeachment</h2>
+  
+    <p class="label">Testimony</p>
+    <p class="testimony">&ldquo;Tests — `./.venv/bin/python -m pytest tests/test_api.py` from `impeach/fixtures/app`: 4 passed.&rdquo; <span class="turn">turn 14</span></p>
+    <p class="label">Record</p>
+    <ol class="record">
+      
+        <li>command <span class="mono">cd &lt;repo&gt;/impeach/fixtures/app &amp;&amp; ./.venv/bin/python -m pytest tests/test_api.py</span> &rarr; pass (exit 0)</li>
+      
+        <li>rerun <span class="mono">3 new failures: tests/test_rounding.py::test_round_money_negative, tests/test_rounding.py::test_round_money_two_places, tests/test_service.py::test_round_money_half_up</span> &rarr; new_failures</li>
+      
+    </ol>
+    <p class="verdict-line"><span class="v-impeached">Impeached</span>: contradicted by rerun.</p>
+  
+</section>
+
+
+<section>
+  <h2>Context</h2>
+  <p class="meta">commands present, reads present, edits present, prompts present, graph present.</p>
+  
+</section>
+
+
+<section>
+  <h2>Summary</h2>
+  <p class="strip">
+    <button type="button" class="f-corroborated" data-verdict="corroborated" aria-pressed="false">0 corroborated</button>
+    <button type="button" class="f-impeached" data-verdict="impeached" aria-pressed="false">1 impeached</button>
+    <button type="button" class="f-uncorroborated" data-verdict="uncorroborated" aria-pressed="false">0 uncorroborated</button>
+    <button type="button" class="f-unverifiable" data-verdict="unverifiable" aria-pressed="false">0 unverifiable</button>
+    <span>0 unrequested</span>
+    <button type="button" id="show-all" hidden>show all</button>
+  </p>
+</section>
+
+<section>
+  <h2>Claims</h2>
+  
+    <p class="controls" id="controls" hidden>
+      <button type="button" id="expand-all">expand all</button>
+      <button type="button" id="collapse-all">collapse all</button>
+    </p>
+    <p class="tokens">Claims extracted from the agent&rsquo;s transcript and their verdicts. Each row expands to the evidence behind it.</p>
+    <div class="rows">
+      <div class="colhead" aria-hidden="true">
+        <span>Verdict</span><span>Family</span><span>Claim</span>
+        <span>Reason</span><span>Rerun</span><span>Turn</span>
+      </div>
+      
+        <details class="row" data-verdict="impeached" open>
+          <summary>
+            <span class="v-impeached">impeached</span>
+            <span class="family">execution</span>
+            <span class="claim">Tests — `./.venv/bin/python -m pytest tests/test_api.py` from `impeach/fixtures/app`: 4 passed.</span>
+            <span class="reason">contradicted by rerun</span>
+            <span class="rerun">new failures</span>
+            <span class="turncell">turn 14</span>
+          </summary>
+          <div class="evidence e-impeached">
+            <p>Re-running now shows 3 new failures.</p>
+            
+              <ul>
+                
+                  <li>
+                    <span class="etype">command</span>
+                    <span class="mono">cd &lt;repo&gt;/impeach/fixtures/app &amp;&amp; ./.venv/bin/python -m pytest tests/test_api.py</span>
+                    <span class="etype">(pass (exit 0))</span>
+                    <pre>============================= test session starts ==============================
+platform darwin -- Python 3.9.6, pytest-8.3.4, pluggy-1.6.0
+rootdir: &lt;repo&gt;/impeach/fixtures/app
+configfile: pytest.ini
+collected 4 items
+
+tests/test_api.py ....                                                   [100%]
+
+============================== 4 passed in 0.00s ===============================</pre>
+                    
+                  </li>
+                
+                  <li>
+                    <span class="etype">rerun</span>
+                    <span class="mono">3 new failures: tests/test_rounding.py::test_round_money_negative, tests/test_rounding.py::test_round_money_two_places, tests/test_service.py::test_round_money_half_up</span>
+                    <span class="etype">(new_failures)</span>
+                    
+                    <div class="etype">Run this to see the same evidence:</div><pre>entire graph verify --repo <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/head --test &#34;cd impeach/fixtures/app &amp;&amp; { test -d .venv || { python3 -m venv .venv &amp;&amp; ./.venv/bin/python -m pip install -q -r requirements.txt; }; } &amp;&amp; ./.venv/bin/python -m pytest -q --tb=no -rA&#34; --pre-edit-baseline <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/baseline.json</pre>
+                  </li>
+                
+              </ul>
+            
+          </div>
+        </details>
+      
+    </div>
+  
+</section>
+
+<section>
+  <h2>Unrequested changes</h2>
+  
+    <p>Every added or signature-changed symbol was named in a prompt.</p>
+  
+</section>
+
+<footer>
+  <p>Claim detection is pattern based. Vaguely phrased claims are missed; a missed claim is silent, not a false one.</p><p>Result parsing knows pytest, go test, jest, cargo, rspec, phpunit, maven and gradle summaries. Other runners fall to uncorroborated.</p><p>The fixture app under impeach/fixtures/app is seeded to exercise each verdict.</p><p>One transcript adapter, claude-code. Other agents degrade to unverifiable rows by design.</p>
+  
+    <p>Commands run, so any line above can be reproduced without trusting this report:</p>
+    <div class="scroll"><pre>git -C <repo> rev-parse --verify --quiet 01M1TET4N33VMY0DTHNZKV5HT9^{commit}
+git -C <repo> log --all --format=%H &#34;--grep=^Entire-Checkpoint: 01M1TET4N33VMY0DTHNZKV5HT9&#34; --regexp-ignore-case
+git -C <repo> log -1 --format=%B 458bb14287ec2e0dcd4b6c52a779c9213af5be52
+git -C <repo> rev-list --parents -n 1 458bb14287ec2e0dcd4b6c52a779c9213af5be52
+entire checkpoint explain 01M1TET4N33VMY0DTHNZKV5HT9 --json
+git -C <repo> worktree add --detach --quiet <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/head 458bb14287ec2e0dcd4b6c52a779c9213af5be52
+git -C <repo> worktree add --detach --quiet <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/base 650a885fdf96dde7f230729ca19db0c8ea217f53
+entire checkpoint explain 01M1TET4N33VMY0DTHNZKV5HT9 --raw-transcript
+entire graph commit 458bb14287ec2e0dcd4b6c52a779c9213af5be52 --repo <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/head --json
+entire graph verify --repo <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/base --test &#34;cd impeach/fixtures/app &amp;&amp; { test -d .venv || { python3 -m venv .venv &amp;&amp; ./.venv/bin/python -m pip install -q -r requirements.txt; }; } &amp;&amp; ./.venv/bin/python -m pytest -q --tb=no -rA&#34; --record-baseline <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/baseline.json
+entire graph verify --repo <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/head --test &#34;cd impeach/fixtures/app &amp;&amp; { test -d .venv || { python3 -m venv .venv &amp;&amp; ./.venv/bin/python -m pip install -q -r requirements.txt; }; } &amp;&amp; ./.venv/bin/python -m pytest -q --tb=no -rA&#34; --pre-edit-baseline <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/baseline.json
+</pre></div>
+  
+  <p>Report generated by entire impeach; nothing in this file was produced by a model unless the header names a model command.</p>
+</footer>
+
+</main>
+
+<script type="application/json" id="impeach-data">{
+  "impeach_version": "0.1.0",
+  "checkpoint": {
+    "id": "01M1TET4N33VMY0DTHNZKV5HT9",
+    "commit": "458bb14287ec2e0dcd4b6c52a779c9213af5be52",
+    "parent": "650a885fdf96dde7f230729ca19db0c8ea217f53",
+    "session_ids": [
+      "1c439358-7307-4721-8422-949e897dbfba"
+    ],
+    "agent": "Claude Code"
+  },
+  "inputs": {
+    "adapter": "claude-code",
+    "extractors": [
+      "pattern"
+    ],
+    "test_command": "cd impeach/fixtures/app && { test -d .venv || { python3 -m venv .venv && ./.venv/bin/python -m pip install -q -r requirements.txt; }; } && ./.venv/bin/python -m pytest -q --tb=no -rA",
+    "rerun": true,
+    "channels": {
+      "commands": true,
+      "edits": true,
+      "graph": true,
+      "prompts": true,
+      "reads": true
+    }
+  },
+  "claims": [
+    {
+      "id": "c1",
+      "text": "Tests — `./.venv/bin/python -m pytest tests/test_api.py` from `impeach/fixtures/app`: 4 passed.",
+      "family": "execution",
+      "scope": "subset",
+      "subjects": [
+        "tests/test_api.py",
+        "impeach/fixtures/app"
+      ],
+      "turn": 14,
+      "seq": 16,
+      "extractor": "pattern",
+      "verdict": "impeached",
+      "reasons": [
+        "contradicted-rerun"
+      ],
+      "summary": "Re-running now shows 3 new failures.",
+      "evidence": [
+        {
+          "type": "command",
+          "seq": 12,
+          "text": "cd <repo>/impeach/fixtures/app && ./.venv/bin/python -m pytest tests/test_api.py",
+          "output_excerpt": "============================= test session starts ==============================\nplatform darwin -- Python 3.9.6, pytest-8.3.4, pluggy-1.6.0\nrootdir: <repo>/impeach/fixtures/app\nconfigfile: pytest.ini\ncollected 4 items\n\ntests/test_api.py ....                                                   [100%]\n\n============================== 4 passed in 0.00s ===============================",
+          "parsed": "pass (exit 0)"
+        },
+        {
+          "type": "rerun",
+          "text": "3 new failures: tests/test_rounding.py::test_round_money_negative, tests/test_rounding.py::test_round_money_two_places, tests/test_service.py::test_round_money_half_up",
+          "parsed": "new_failures",
+          "reproduce": "entire graph verify --repo <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/head --test \"cd impeach/fixtures/app && { test -d .venv || { python3 -m venv .venv && ./.venv/bin/python -m pip install -q -r requirements.txt; }; } && ./.venv/bin/python -m pytest -q --tb=no -rA\" --pre-edit-baseline <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/baseline.json"
+        }
+      ],
+      "rerun": "new_failures"
+    }
+  ],
+  "unrequested": [],
+  "prompt_token_count": 82,
+  "channels": {
+    "commands": {
+      "state": "present"
+    },
+    "edits": {
+      "state": "present"
+    },
+    "graph": {
+      "state": "present"
+    },
+    "prompts": {
+      "state": "present"
+    },
+    "reads": {
+      "state": "present"
+    }
+  },
+  "context_complete": true,
+  "claims_gated_by_channel": 0,
+  "sensitive_mode": false,
+  "counts": {
+    "corroborated": 0,
+    "impeached": 1,
+    "uncorroborated": 0,
+    "unverifiable": 0,
+    "unrequested": 0
+  },
+  "limitations": [
+    "Claim detection is pattern based. Vaguely phrased claims are missed; a missed claim is silent, not a false one.",
+    "Result parsing knows pytest, go test, jest, cargo, rspec, phpunit, maven and gradle summaries. Other runners fall to uncorroborated.",
+    "The fixture app under impeach/fixtures/app is seeded to exercise each verdict.",
+    "One transcript adapter, claude-code. Other agents degrade to unverifiable rows by design."
+  ],
+  "commands_run": [
+    "git -C <repo> rev-parse --verify --quiet 01M1TET4N33VMY0DTHNZKV5HT9^{commit}",
+    "git -C <repo> log --all --format=%H \"--grep=^Entire-Checkpoint: 01M1TET4N33VMY0DTHNZKV5HT9\" --regexp-ignore-case",
+    "git -C <repo> log -1 --format=%B 458bb14287ec2e0dcd4b6c52a779c9213af5be52",
+    "git -C <repo> rev-list --parents -n 1 458bb14287ec2e0dcd4b6c52a779c9213af5be52",
+    "entire checkpoint explain 01M1TET4N33VMY0DTHNZKV5HT9 --json",
+    "git -C <repo> worktree add --detach --quiet <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/head 458bb14287ec2e0dcd4b6c52a779c9213af5be52",
+    "git -C <repo> worktree add --detach --quiet <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/base 650a885fdf96dde7f230729ca19db0c8ea217f53",
+    "entire checkpoint explain 01M1TET4N33VMY0DTHNZKV5HT9 --raw-transcript",
+    "entire graph commit 458bb14287ec2e0dcd4b6c52a779c9213af5be52 --repo <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/head --json",
+    "entire graph verify --repo <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/base --test \"cd impeach/fixtures/app && { test -d .venv || { python3 -m venv .venv && ./.venv/bin/python -m pip install -q -r requirements.txt; }; } && ./.venv/bin/python -m pytest -q --tb=no -rA\" --record-baseline <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/baseline.json",
+    "entire graph verify --repo <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/head --test \"cd impeach/fixtures/app && { test -d .venv || { python3 -m venv .venv && ./.venv/bin/python -m pip install -q -r requirements.txt; }; } && ./.venv/bin/python -m pytest -q --tb=no -rA\" --pre-edit-baseline <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/baseline.json"
+  ]
+}
+</script>
+<script>// The page is complete without this script. Every evidence panel is present in
+// the markup and open by default, so a reader with scripts disabled sees all
+// the evidence. All this does is collapse the panels and add filtering.
+(function () {
+  "use strict";
+
+  var rows = Array.prototype.slice.call(document.querySelectorAll("details.row"));
+  if (!rows.length) return;
+
+  // Collapse on load. Without JS they stay open, which is the point.
+  rows.forEach(function (r) { r.open = false; });
+
+  var controls = document.getElementById("controls");
+  if (controls) controls.hidden = false;
+
+  function setAll(open) {
+    rows.forEach(function (r) {
+      if (r.hidden) return;
+      r.open = open;
+    });
+  }
+
+  var expand = document.getElementById("expand-all");
+  var collapse = document.getElementById("collapse-all");
+  if (expand) expand.addEventListener("click", function () { setAll(true); });
+  if (collapse) collapse.addEventListener("click", function () { setAll(false); });
+
+  // Filters are additive toggles. With none pressed, everything shows.
+  var filters = Array.prototype.slice.call(document.querySelectorAll("button[data-verdict]"));
+
+  function active() {
+    return filters
+      .filter(function (b) { return b.getAttribute("aria-pressed") === "true"; })
+      .map(function (b) { return b.getAttribute("data-verdict"); });
+  }
+
+  function apply() {
+    var on = active();
+    rows.forEach(function (r) {
+      r.hidden = on.length > 0 && on.indexOf(r.getAttribute("data-verdict")) === -1;
+    });
+    var reset = document.getElementById("show-all");
+    if (reset) reset.hidden = on.length === 0;
+  }
+
+  filters.forEach(function (b) {
+    b.addEventListener("click", function () {
+      var pressed = b.getAttribute("aria-pressed") === "true";
+      b.setAttribute("aria-pressed", pressed ? "false" : "true");
+      apply();
+    });
+  });
+
+  var reset = document.getElementById("show-all");
+  if (reset) {
+    reset.addEventListener("click", function () {
+      filters.forEach(function (b) { b.setAttribute("aria-pressed", "false"); });
+      apply();
+    });
+  }
+
+  apply();
+})();
+</script>
+</body>
+</html>

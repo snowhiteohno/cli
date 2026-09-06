@@ -255,6 +255,45 @@ agent transcripts are readable by anyone. That is a property of Entire's
 default storage rather than a choice made here, and it is why the committed
 fixtures are scrubbed of absolute paths, user names and author identity.
 
+## The landing page
+
+`site/` is a single self-contained page for someone who will not clone
+anything: the lead impeachment, what each verdict means, what gets checked,
+install and reproduce commands, the full sample report in an iframe, and the
+limitations. No external requests, no fonts, no analytics, no script element
+at all.
+
+It is generated, not hand-authored:
+
+```
+# 1. Produce a real report by replaying a committed scenario. Offline.
+entire impeach 01M1TET4N33VMY0DTHNZKV5HT9 --repo . --setup ""   --test 'cd impeach/fixtures/app && ./.venv/bin/python -m pytest -q --tb=no -rA'   --replay impeach/fixtures/recorded/rerun-regression --out /tmp/sample
+
+# 2. Build the site from it.
+cd impeach && go run ./internal/report/gen-site --from /tmp/sample --repo ..
+```
+
+`gen-site` copies the report's own stylesheet, scrubs machine paths out of the
+sample, and **lifts the lead-impeachment block out of the sample report
+verbatim** rather than rewriting it. That is the point: the page's hero and
+the report's hero are the same bytes, so the two surfaces cannot drift into
+giving different accounts of the same audit. A test asserts the byte match,
+and others assert no absolute paths, no external requests and no drift between
+`site/style.css` and `internal/report/report.css`.
+
+**It is not published yet, and that needs a decision.** The frontend spec says
+to serve it from GitHub Pages with folder `/impeach/site`, but a Pages branch
+deployment only offers `/` or `/docs` as the source folder, and `/docs` in
+this fork already holds the upstream CLI's documentation. So publishing needs
+one of: a Pages workflow under `.github/workflows`, a copy at the repository
+root or in `/docs`, or a separate repository. All three touch files outside
+`impeach/`, so none was chosen unilaterally. Until then the page is served
+locally:
+
+```
+cd impeach/site && python3 -m http.server
+```
+
 ## Reading further
 
 - `docs/PRD.md`: the user, the problem, the claim families, what is out of scope.

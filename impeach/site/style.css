@@ -1,0 +1,230 @@
+/* Tokens from docs/FRONTEND_SPEC.md. The design reads as a case file, not a
+   dashboard: text does the work and colour is spent on verdicts only. */
+:root {
+  --paper: #FFFFFF;
+  --ink: #1C1B1A;
+  --ink-2: #5B5854;
+  --rule: #D9D6D0;
+  --corroborated: #1F6B3A;
+  --impeached: #8C1D18;
+  --uncorroborated: #4A5568;
+  --unverifiable: #8A8F98;
+  --focus: #1A3D6B;
+  --sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #17191C;
+    --ink: #E8E6E1;
+    --ink-2: #A9A6A0;
+    --rule: #33363B;
+    --corroborated: #4FA86E;
+    --impeached: #D9534F;
+    --uncorroborated: #9AA5B8;
+    --unverifiable: #8A8F98;
+    --focus: #7FA6DE;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 24px;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 15px/1.55 var(--sans);
+}
+
+main { max-width: 880px; margin: 0 auto; }
+
+section { margin-bottom: 48px; }
+
+h1, h2 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--rule);
+}
+
+h1 { font-size: 22px; }
+
+p { max-width: 72ch; margin: 0 0 10px; }
+
+code, pre, .mono { font-family: var(--mono); }
+
+a { color: var(--focus); }
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.meta { color: var(--ink-2); font-size: 13px; margin-bottom: 4px; }
+
+.label {
+  color: var(--ink-2);
+  font-size: 13px;
+  margin: 0 0 4px;
+}
+
+/* The lead impeachment: testimony above, record below. The one memorable
+   element on the page. */
+.testimony {
+  font-family: var(--mono);
+  font-size: 28px;
+  line-height: 1.3;
+  margin: 0 0 4px;
+  max-width: none;
+}
+
+.turn { font-size: 13px; color: var(--ink-2); font-family: var(--sans); }
+
+.record { margin: 0 0 12px; padding-left: 22px; font-size: 15px; }
+.record li { margin-bottom: 4px; }
+.record .mono { font-size: 13px; }
+
+.verdict-line { font-size: 15px; }
+
+/* Verdict colour appears as the word itself, a 4px left border on an evidence
+   panel, and the counts in the summary strip. Never as a fill behind text. */
+.v-corroborated { color: var(--corroborated); font-weight: 600; }
+.v-impeached { color: var(--impeached); font-weight: 600; }
+.v-uncorroborated { color: var(--uncorroborated); font-weight: 600; }
+.v-unverifiable { color: var(--unverifiable); font-weight: 600; }
+
+.strip { font-size: 15px; }
+.strip button {
+  font: inherit;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  padding: 0;
+  margin-right: 16px;
+  cursor: pointer;
+}
+.strip button:hover { text-decoration: underline; }
+.strip button[aria-pressed="true"] { font-weight: 600; }
+.strip button[aria-pressed="true"].f-corroborated { color: var(--corroborated); }
+.strip button[aria-pressed="true"].f-impeached { color: var(--impeached); }
+.strip button[aria-pressed="true"].f-uncorroborated { color: var(--uncorroborated); }
+.strip button[aria-pressed="true"].f-unverifiable { color: var(--unverifiable); }
+
+.controls { margin-bottom: 10px; }
+.controls button {
+  font: inherit;
+  font-size: 13px;
+  color: var(--focus);
+  background: none;
+  border: 0;
+  padding: 0;
+  margin-right: 14px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+caption { text-align: left; color: var(--ink-2); font-size: 13px; padding-bottom: 8px; }
+th, td { text-align: left; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+/* Symbol names and paths are long. Wrapping them keeps the last columns on
+   screen instead of pushing Severity out of the container. */
+td.mono { overflow-wrap: anywhere; }
+th { font-weight: 600; }
+
+/* Wide content scrolls inside its own container so the page never scrolls
+   sideways. */
+.scroll { overflow-x: auto; }
+
+.rows { border-top: 1px solid var(--rule); }
+
+details { border-bottom: 1px solid var(--rule); }
+
+summary {
+  display: grid;
+  grid-template-columns: 8.5rem 6rem 1fr 10rem 7rem 3rem;
+  gap: 10px;
+  padding: 8px 0;
+  cursor: pointer;
+  font-size: 13px;
+  align-items: start;
+}
+
+.colhead {
+  display: grid;
+  grid-template-columns: 8.5rem 6rem 1fr 10rem 7rem 3rem;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 13px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--rule);
+}
+
+summary::-webkit-details-marker { display: none; }
+summary::marker { content: ""; }
+
+/* The claim is never truncated here. Truncation is for the terminal only. */
+.claim { font-family: var(--mono); overflow-wrap: anywhere; }
+
+.reason, .rerun, .family, .turncell { color: var(--ink-2); }
+
+/* Colour alone must not carry meaning, so unverifiable also carries a hatch
+   that survives greyscale and print. */
+.hatched {
+  background-image: repeating-linear-gradient(
+    45deg, transparent, transparent 4px,
+    color-mix(in srgb, var(--unverifiable) 22%, transparent) 4px,
+    color-mix(in srgb, var(--unverifiable) 22%, transparent) 8px);
+}
+
+.evidence {
+  border-left: 4px solid var(--rule);
+  padding: 8px 0 12px 14px;
+  margin-bottom: 8px;
+}
+.evidence.e-corroborated { border-left-color: var(--corroborated); }
+.evidence.e-impeached { border-left-color: var(--impeached); }
+.evidence.e-uncorroborated { border-left-color: var(--uncorroborated); }
+.evidence.e-unverifiable { border-left-color: var(--unverifiable); }
+
+.evidence ul { list-style: none; padding: 0; margin: 8px 0 0; }
+.evidence li { margin-bottom: 8px; font-size: 13px; }
+.etype { color: var(--ink-2); }
+
+/* An output excerpt scrolls sideways and never wraps, so a runner's columns
+   stay aligned. */
+pre {
+  font-size: 13px;
+  margin: 4px 0;
+  padding: 6px 8px;
+  border: 1px solid var(--rule);
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.tokens { color: var(--ink-2); font-size: 13px; }
+
+/* Incomplete context is a caveat on every verdict below it, so it reads in
+   the uncorroborated colour rather than as ordinary secondary text. It is not
+   a fill: the colour is on the words. */
+.incomplete { color: var(--uncorroborated); font-weight: 600; }
+
+footer { color: var(--ink-2); font-size: 13px; border-top: 1px solid var(--rule); padding-top: 12px; }
+footer p { max-width: 72ch; }
+
+@media (max-width: 620px) {
+  summary { grid-template-columns: 1fr; gap: 2px; }
+  .colhead { display: none; }
+  .testimony { font-size: 20px; }
+}
+
+@media print {
+  body { padding: 0; color: #000; background: #fff; }
+  .controls, .strip button { display: none; }
+  main { max-width: 100%; }
+  details { break-inside: avoid; }
+  details[open] > summary ~ * { display: block; }
+  pre { white-space: pre-wrap; }
+}

@@ -1,0 +1,111 @@
+{
+  "impeach_version": "0.1.0",
+  "checkpoint": {
+    "id": "01M1TET4N33VMY0DTHNZKV5HT9",
+    "commit": "458bb14287ec2e0dcd4b6c52a779c9213af5be52",
+    "parent": "650a885fdf96dde7f230729ca19db0c8ea217f53",
+    "session_ids": [
+      "1c439358-7307-4721-8422-949e897dbfba"
+    ],
+    "agent": "Claude Code"
+  },
+  "inputs": {
+    "adapter": "claude-code",
+    "extractors": [
+      "pattern"
+    ],
+    "test_command": "cd impeach/fixtures/app && { test -d .venv || { python3 -m venv .venv && ./.venv/bin/python -m pip install -q -r requirements.txt; }; } && ./.venv/bin/python -m pytest -q --tb=no -rA",
+    "rerun": true,
+    "channels": {
+      "commands": true,
+      "edits": true,
+      "graph": true,
+      "prompts": true,
+      "reads": true
+    }
+  },
+  "claims": [
+    {
+      "id": "c1",
+      "text": "Tests — `./.venv/bin/python -m pytest tests/test_api.py` from `impeach/fixtures/app`: 4 passed.",
+      "family": "execution",
+      "scope": "subset",
+      "subjects": [
+        "tests/test_api.py",
+        "impeach/fixtures/app"
+      ],
+      "turn": 14,
+      "seq": 16,
+      "extractor": "pattern",
+      "verdict": "impeached",
+      "reasons": [
+        "contradicted-rerun"
+      ],
+      "summary": "Re-running now shows 3 new failures.",
+      "evidence": [
+        {
+          "type": "command",
+          "seq": 12,
+          "text": "cd <repo>/impeach/fixtures/app && ./.venv/bin/python -m pytest tests/test_api.py",
+          "output_excerpt": "============================= test session starts ==============================\nplatform darwin -- Python 3.9.6, pytest-8.3.4, pluggy-1.6.0\nrootdir: <repo>/impeach/fixtures/app\nconfigfile: pytest.ini\ncollected 4 items\n\ntests/test_api.py ....                                                   [100%]\n\n============================== 4 passed in 0.00s ===============================",
+          "parsed": "pass (exit 0)"
+        },
+        {
+          "type": "rerun",
+          "text": "3 new failures: tests/test_rounding.py::test_round_money_negative, tests/test_rounding.py::test_round_money_two_places, tests/test_service.py::test_round_money_half_up",
+          "parsed": "new_failures",
+          "reproduce": "entire graph verify --repo <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/head --test \"cd impeach/fixtures/app && { test -d .venv || { python3 -m venv .venv && ./.venv/bin/python -m pip install -q -r requirements.txt; }; } && ./.venv/bin/python -m pytest -q --tb=no -rA\" --pre-edit-baseline <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/baseline.json"
+        }
+      ],
+      "rerun": "new_failures"
+    }
+  ],
+  "unrequested": [],
+  "prompt_token_count": 82,
+  "channels": {
+    "commands": {
+      "state": "present"
+    },
+    "edits": {
+      "state": "present"
+    },
+    "graph": {
+      "state": "present"
+    },
+    "prompts": {
+      "state": "present"
+    },
+    "reads": {
+      "state": "present"
+    }
+  },
+  "context_complete": true,
+  "claims_gated_by_channel": 0,
+  "sensitive_mode": false,
+  "counts": {
+    "corroborated": 0,
+    "impeached": 1,
+    "uncorroborated": 0,
+    "unverifiable": 0,
+    "unrequested": 0
+  },
+  "limitations": [
+    "Claim detection is pattern based. Vaguely phrased claims are missed; a missed claim is silent, not a false one.",
+    "Result parsing knows pytest, go test, jest, cargo, rspec, phpunit, maven and gradle summaries. Other runners fall to uncorroborated.",
+    "The fixture app under impeach/fixtures/app is seeded to exercise each verdict.",
+    "One transcript adapter, claude-code. Other agents degrade to unverifiable rows by design."
+  ],
+  "commands_run": [
+    "git -C <repo> rev-parse --verify --quiet 01M1TET4N33VMY0DTHNZKV5HT9^{commit}",
+    "git -C <repo> log --all --format=%H \"--grep=^Entire-Checkpoint: 01M1TET4N33VMY0DTHNZKV5HT9\" --regexp-ignore-case",
+    "git -C <repo> log -1 --format=%B 458bb14287ec2e0dcd4b6c52a779c9213af5be52",
+    "git -C <repo> rev-list --parents -n 1 458bb14287ec2e0dcd4b6c52a779c9213af5be52",
+    "entire checkpoint explain 01M1TET4N33VMY0DTHNZKV5HT9 --json",
+    "git -C <repo> worktree add --detach --quiet <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/head 458bb14287ec2e0dcd4b6c52a779c9213af5be52",
+    "git -C <repo> worktree add --detach --quiet <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/base 650a885fdf96dde7f230729ca19db0c8ea217f53",
+    "entire checkpoint explain 01M1TET4N33VMY0DTHNZKV5HT9 --raw-transcript",
+    "entire graph commit 458bb14287ec2e0dcd4b6c52a779c9213af5be52 --repo <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/head --json",
+    "entire graph verify --repo <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/base --test \"cd impeach/fixtures/app && { test -d .venv || { python3 -m venv .venv && ./.venv/bin/python -m pip install -q -r requirements.txt; }; } && ./.venv/bin/python -m pytest -q --tb=no -rA\" --record-baseline <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/baseline.json",
+    "entire graph verify --repo <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/head --test \"cd impeach/fixtures/app && { test -d .venv || { python3 -m venv .venv && ./.venv/bin/python -m pip install -q -r requirements.txt; }; } && ./.venv/bin/python -m pytest -q --tb=no -rA\" --pre-edit-baseline <home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/baseline.json"
+  ]
+}

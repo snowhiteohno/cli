@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.10.6-nightly.202609050622.61dac01ed.0.20260905201708-3dbdf8b83c39+dirty",
+  "checkpoint_id": "01M1TWMC6VVVJZEA4XH2R6PYFP",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "impeach/internal/report/site_test.go",
+    "impeach/site/README.md",
+    "impeach/site/fonts/fraunces-var.woff2",
+    "impeach/site/fonts/jetbrains-mono-var.woff2",
+    "impeach/site/index.html",
+    "impeach/site/site.js",
+    "impeach/site/style.css"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 2,
+    "cache_creation_tokens": 52252,
+    "cache_read_tokens": 16035,
+    "output_tokens": 178,
+    "api_call_count": 1
+  }
+}

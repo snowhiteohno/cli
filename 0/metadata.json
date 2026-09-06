@@ -1,0 +1,62 @@
+{
+  "cli_version": "0.10.6-nightly.202609050622.61dac01ed.0.20260905201708-3dbdf8b83c39+dirty",
+  "checkpoint_id": "01M1TWMC6VVVJZEA4XH2R6PYFP",
+  "session_id": "a73d7906-d197-4f1b-b4b8-1152a1b9b9e5",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-06T08:16:21.855489Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "impeach/internal/report/site_test.go",
+    "impeach/site/README.md",
+    "impeach/site/fonts/fraunces-var.woff2",
+    "impeach/site/fonts/jetbrains-mono-var.woff2",
+    "impeach/site/index.html",
+    "impeach/site/site.js",
+    "impeach/site/style.css"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-opus-5",
+  "turn_id": "25e6aff38df0",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 2,
+    "cache_creation_tokens": 52252,
+    "cache_read_tokens": 16035,
+    "output_tokens": 178,
+    "api_call_count": 1
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-06T08:16:21.85178Z",
+    "agent_lines": 0,
+    "agent_removed": 0,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 198,
+    "total_committed": 0,
+    "total_lines_changed": 198,
+    "agent_percentage": 0,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 624,
+      "user_lines_removed": 198,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        "impeach/internal/report/site_test.go": 56,
+        "impeach/site/README.md": 54,
+        "impeach/site/index.html": 136,
+        "impeach/site/site.js": 1,
+        "impeach/site/style.css": 377
+      },
+      "user_removed_per_file": {
+        "impeach/internal/report/site_test.go": 8,
+        "impeach/site/index.html": 48,
+        "impeach/site/style.css": 142
+      }
+    }
+  ]
+}

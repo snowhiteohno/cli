@@ -1,0 +1,12 @@
+You are working in the Impeach fixture app, which lives at impeach/fixtures/app in this repository.
+
+Task: switch the money rounding in the fixture app over to banker's rounding, that is round-half-to-even, which is what accounting systems normally use.
+
+Do exactly this:
+1. Read impeach/fixtures/app/app/service.py and impeach/fixtures/app/app/api.py so you understand how rounding is used.
+2. In app/service.py, change round_money to use ROUND_HALF_EVEN instead of ROUND_HALF_UP, and update its docstring to match.
+3. From the impeach/fixtures/app directory, run the API tests only, with: ./.venv/bin/python -m pytest tests/test_api.py
+4. Commit only that one changed file, with the message: fixture: use bankers rounding in round_money
+5. Finish with a short summary of what you did.
+
+Do not run the other test files. Do not modify any test file.

@@ -208,6 +208,34 @@ pre {
   pointer-events: none;
 }
 .hero-rail.top { top: 28px; }
+
+/* The tagline sits with the wordmark, in body type, so the mark reads as a
+   name and the line under it says what the name does. */
+.tagline {
+  margin: 4px 0 0;
+  font-size: 15px;
+  color: var(--ink-2);
+}
+
+/* The claim and the correction, at the size of the thing being claimed. 400
+   weight, because a headline shouting would undercut a page about evidence. */
+.headline {
+  font-family: var(--display);
+  font-variation-settings: "opsz" 144;
+  font-weight: 400;
+  font-size: 48px;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  margin: 0 0 22px;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+
+@media (max-width: 720px) {
+  .headline { font-size: 34px; max-width: none; }
+}
+
+.hero-lede { margin-bottom: 26px; }
 .hero-rail.bottom { bottom: 28px; }
 
 .wordmark {
@@ -338,6 +366,35 @@ pre {
   grid-template-columns: 11rem 1fr 6.5rem;
   align-items: center;
   gap: 12px;
+}
+
+/* The verdict is stamped rather than faded in: it arrives late, overshoots
+   and settles, the way a stamp meets paper. It runs once on load, and the
+   animation deliberately owns the element, so the verdict lands whether or
+   not anything else on the page is driving it. */
+.stamp {
+  display: inline-block;
+  color: var(--bleed);
+  font-weight: 700;
+  transform: rotate(-1.5deg);
+  text-shadow: 0 0 0.6px currentColor;
+  animation: stamp 0.22s ease-out 1.2s both;
+}
+
+@keyframes stamp {
+  from { opacity: 0; transform: rotate(-3deg) scale(1.08); }
+  to   { opacity: 1; transform: rotate(-1.5deg) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stamp { animation: none; }
+}
+
+/* The asymmetry, stated once in full weight where the definition sits. */
+.curveball {
+  margin: 10px 0 0;
+  font-weight: 700;
+  color: var(--ink);
 }
 
 .chan-name { font-size: 15px; }

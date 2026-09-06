@@ -15,12 +15,23 @@
 
 <!-- ==================================================== 1. light table -->
 <section class="hero" id="hero">
-  <div class="hero-rail top"><p class="wordmark">Impeach</p></div>
+  <div class="hero-rail top">
+    <p class="wordmark">Impeach</p>
+    <p class="tagline">Cross-examine your coding agent.</p>
+  </div>
 
   <canvas id="table" role="img"
     aria-label="A sheet of paper on a light table. The printed testimony reads: Tests, pytest tests slash test_api.py from impeach slash fixtures slash app, 4 passed. Under the paper the record shows one command that passed and a rerun reporting 3 new failures, and the verdict is impeached, contradicted by rerun."></canvas>
 
   <div class="hero-inner">
+    <h1 class="headline">Your agent said the tests passed.<br>It ran one of four. Then it
+    changed the code.</h1>
+
+    <p class="lede hero-lede">Impeach cross-examines what an AI coding agent claimed it did
+    against the record of what it actually did. It runs as a plugin for the Entire CLI, reads
+    the checkpoint's tool log and the entity-level diff from Entire Graph, and gives every
+    claim a verdict with the evidence attached.</p>
+
     <p class="label">Testimony</p>
     <p class="testimony">&ldquo;Tests &mdash; `./.venv/bin/python -m pytest tests/test_api.py` from `impeach/fixtures/app`: 4 passed.&rdquo;</p>
 
@@ -30,7 +41,7 @@
       <li class="bleeds">rerun <span class="mono">3 new failures in tests/test_rounding.py and tests/test_service.py</span></li>
     </ol>
 
-    <p><span class="verdict" id="verdict">Impeached: contradicted by rerun.</span></p>
+    <p><span class="verdict stamp" id="verdict">Impeached: contradicted by rerun.</span></p>
   </div>
 
   <div class="hero-rail bottom"><p class="hero-hint">Below the testimony, the record of what actually happened.</p></div>
@@ -62,10 +73,6 @@
 <!-- ================================================= 2. what Impeach is -->
 <section class="band">
   <h2 class="ruled">What Impeach is</h2>
-  <p class="lede">Impeach cross-examines what an AI coding agent claimed it did against the
-  record of what it actually did. It runs as a plugin for the Entire CLI, reads the
-  checkpoint's tool log and the entity-level diff from Entire Graph, and gives every claim a
-  verdict with the evidence attached.</p>
   <p class="lede">This is a real report from the fixture app in this repository, produced by
   replaying a recorded audit with no network and no agent. The transcript said the tests
   passed, and it was telling the truth: one of four test files ran, it went green, and the
@@ -111,7 +118,7 @@
 
 <!-- =============================================== 4. what a verdict is -->
 <section class="band">
-  <h2 class="ruled">What a verdict means</h2>
+  <h2 class="ruled">What each verdict means</h2>
   <dl class="verdicts">
     <div>
       <dt class="v-corroborated">Corroborated</dt>
@@ -131,7 +138,9 @@
       <dt class="v-unverifiable">Unverifiable <span class="hatch-swatch" aria-hidden="true"></span></dt>
       <dd>The channel is missing, redacted or partial. Missing data is a state, never an
       error, and a redacted channel can never corroborate: what was removed could be exactly
-      what would have contradicted the claim.</dd>
+      what would have contradicted the claim.
+      <p class="curveball">A redacted channel can still impeach. It can never
+      corroborate.</p></dd>
     </div>
   </dl>
   <p class="lede">A fifth row type, unrequested, flags added or signature-changed symbols
@@ -139,9 +148,19 @@
   a model.</p>
 </section>
 
+<section class="band">
+  <h2 class="ruled">Without Entire there is no record.</h2>
+  <p class="lede">The tool log and the prompts exist only in the Entire checkpoint. A git diff
+  shows what changed; it cannot show that the agent claimed the tests passed, or that only one
+  test file ever ran, or that a file was edited after the last run.</p>
+  <p class="lede">The entity-level diff and the caller analysis exist only in Entire Graph.
+  That is how &ldquo;no other callers&rdquo; gets checked against the callers that exist.
+  Remove either source and Impeach has nothing to compare the testimony against.</p>
+</section>
+
 <!-- ================================================ 5. what gets checked -->
 <section class="band">
-  <h2 class="ruled">What gets checked</h2>
+  <h2 class="ruled">What gets checked, and where the evidence comes from</h2>
   <div class="scroll">
     <table>
       <caption>The four claim families and the evidence each rests on.</caption>
@@ -185,7 +204,7 @@
 <span class="term-line pending"> </span>
 <span class="term-line pending">exit 2</span></pre></div>
 
-  <h2 class="ruled">Install and run</h2>
+  <h2 class="ruled">Run it yourself</h2>
   <div class="scroll"><pre>git clone https://github.com/snowhiteohno/cli.git
 cd cli/impeach
 mkdir -p ~/.local/share/entire/plugins/bin
@@ -235,7 +254,7 @@ entire impeach 01M1TJCCYXR7ZZTK1H8167G249 --repo .</pre></div>
 
 <!-- ====================================================== 9. limitations -->
 <section class="band">
-  <h2 class="ruled">Limitations</h2>
+  <h2 class="ruled">What it cannot do</h2>
   <ul class="limits">
     <li>Claim detection is pattern based. Vaguely phrased claims are missed. A missed claim
     is silent, not a false one, which is the deliberate direction to fail in.</li>

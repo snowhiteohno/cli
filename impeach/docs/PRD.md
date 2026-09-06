@@ -59,8 +59,8 @@ Exit codes: 0 completed; 2 the `--fail-on` condition was met; 1 runtime error.
 
 ## The 90-second demo
 
-1. `entire impeach a1b2c3d4e5f6 --test "pytest -q"` on a checkpoint from the fixture app.
-2. The table shows six rows. Row one, impeached: "All tests pass." Evidence: `pytest tests/test_api.py` ran at 10:42 (one of four test files, scope mismatch); `service.py` was edited at 10:51 and no test ran after that (stale); rerun now: two new failures in `tests/test_service.py`.
+1. `entire impeach a1b2c3d4e5f6 --test "pytest -q --tb=no -rA"` on a checkpoint from the fixture app. The extra flags are required, not cosmetic: with a bare `pytest -q` the `graph verify` parser does not engage and the rerun degrades to an exit code with no test ids.
+2. The table shows six rows. Row one, impeached: "All tests pass." Evidence: `pytest tests/test_api.py` ran at 10:42 (one of four test files, scope mismatch); `service.py` was edited at 10:51 and no test ran after that (stale); rerun now: three new failures, in `tests/test_service.py` and `tests/test_rounding.py`.
 3. Row two, impeached: "No other callers are affected." Evidence: `graph impact` shows three callers of `compute_total`, and its signature changed.
 4. Row three, corroborated: "Added `test_refund_rounding`." Evidence: `graph commit` lists it as an added function in `tests/test_refunds.py`.
 5. Row four, uncorroborated: "Verified the migration path." No command or read event matches.

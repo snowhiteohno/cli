@@ -24,7 +24,7 @@ impeach/
 ## Data flow
 
 ```
-entire impeach <ref> --test "pytest -q"
+entire impeach <ref> --test "pytest -q --tb=no -rA"
    │
    ├─ 1. Resolve       ref -> checkpoint id + commit sha + parent sha
    ├─ 2. Testimony     entire checkpoint explain <id> --raw-transcript  -> adapter -> []Event
@@ -193,7 +193,7 @@ Unrequested detector:
 {
   "impeach_version": "0.1.0",
   "checkpoint": {"id": "a1b2c3d4e5f6", "commit": "…", "parent": "…", "session_ids": ["…"], "agent": "claude-code"},
-  "inputs": {"adapter": "claude-code", "extractors": ["pattern"], "test_command": "pytest -q", "rerun": true,
+  "inputs": {"adapter": "claude-code", "extractors": ["pattern"], "test_command": "pytest -q --tb=no -rA", "rerun": true,
              "channels": {"commands": true, "reads": true, "graph": true}},
   "claims": [
     {"id": "c1", "text": "All tests pass.", "family": "execution", "turn": 7, "extractor": "pattern",
@@ -249,7 +249,9 @@ Before any product code, in the fork with Entire enabled and Graph installed:
 2. `entire checkpoint list --json` and note the fields. `entire checkpoint explain <id> --raw-transcript > /tmp/t.jsonl`. `entire checkpoint explain <id> --full > /tmp/t.txt`. `entire agent-help checkpoint explain --json` for the installed flags.
 3. Inspect `/tmp/t.jsonl` for: (a) `tool_use` blocks with `name` and `input`, (b) `tool_result` blocks paired by id with output content, (c) `Read`/`Grep` inputs carrying file paths, (d) timestamps.
 4. `entire graph commit HEAD --repo .` and `entire graph impact --symbol <edited function> --repo .`; check for a JSON flag in `--help`.
-5. `entire graph verify --repo . --test "pytest -q"` once, to see the output shape.
+5. `entire graph verify --repo . --test "pytest -q --tb=no -rA"` once, to see the output
+   shape. The flags matter: with a bare `-q` the pytest parser does not engage
+   and the result degrades to an exit code, which is what the probe found.
 
 Degradations, decided by the probe:
 

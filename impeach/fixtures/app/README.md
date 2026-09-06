@@ -34,3 +34,7 @@ useless for a tool about claims:
 So a plain `pytest -q` on a current checkout shows three failures. That is the
 seeded state, not a broken fixture. Check out the phase 0 commit to see the
 green baseline.
+
+When running this suite through `entire graph verify`, use
+`pytest -q --tb=no -rA`. A bare `-q` prints no per-test ids, so the verify
+parser cannot engage and the result degrades to an exit code.

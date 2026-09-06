@@ -46,7 +46,7 @@ File: `impeach.html`, produced by `html/template` from the same struct that prod
 
 ### Structure, top to bottom
 
-1. Header line. Plain text: `Impeach 0.1.0 report for checkpoint a1b2c3d4e5f6 (commit 3f9c2e1, parent 8b1d0a7), session 2 of 2, agent claude-code.` Second line: `Adapter claude-code. Extractors: pattern. Test command: pytest -q. Rerun: yes. Model command: none.` When a model command was used, this line names it verbatim.
+1. Header line. Plain text: `Impeach 0.1.0 report for checkpoint a1b2c3d4e5f6 (commit 3f9c2e1, parent 8b1d0a7), session 2 of 2, agent claude-code.` Second line: `Adapter claude-code. Extractors: pattern. Test command: pytest -q --tb=no -rA. Rerun: yes. Model command: none.` When a model command was used, this line names it verbatim.
 
 2. Lead impeachment (the hero). Only rendered when at least one impeached claim exists; otherwise the section reads `No claim was impeached.` in the heading style. Content:
 
@@ -55,14 +55,14 @@ File: `impeach.html`, produced by `html/template` from the same struct that prod
      1. `10:42  pytest tests/test_api.py  →  4 passed  (1 of 4 test files)`
      2. `10:51  edited app/service.py`
      3. `10:53  commit 3f9c2e1  (no test run after 10:51)`
-     4. `now    rerun pytest -q  →  2 new failures in tests/test_service.py`
+     4. `now    rerun pytest -q --tb=no -rA  →  3 new failures in tests/test_service.py and tests/test_rounding.py`
    - Verdict line: `Impeached: scope mismatch, stale.` with "Impeached" in `--impeached` at 600 weight.
 
    Selection rule for the lead: the impeached claim with the most reasons; ties broken by rerun new failures, then by earliest turn.
 
 3. Summary strip. One row of five counts as plain text separated by two spaces of whitespace, not dots: `1 corroborated   2 impeached   1 uncorroborated   0 unverifiable   1 unrequested`. Each count is a filter toggle (button element, styled as text with an underline on hover and a visible focus ring). Active filters are shown by the count word gaining its verdict colour; "show all" resets.
 
-4. Claims table. Columns: Verdict, Family, Claim, Reason, Rerun, Turn. Rows sorted impeached first, then uncorroborated, unverifiable, corroborated; within a group by turn. The Claim cell is monospace, wrapped, never truncated in HTML (truncation is for the terminal only). The Reason cell lists reason codes as readable phrases (`scope mismatch`, `stale`, `callers exist`). Rerun shows `pass`, `2 new failures`, `not run`, or `skipped`. Every row is a `<details>` element: the `<summary>` is the row, and the expanded body is the evidence panel.
+4. Claims table. Columns: Verdict, Family, Claim, Reason, Rerun, Turn. Rows sorted impeached first, then uncorroborated, unverifiable, corroborated; within a group by turn. The Claim cell is monospace, wrapped, never truncated in HTML (truncation is for the terminal only). The Reason cell lists reason codes as readable phrases (`scope mismatch`, `stale`, `callers exist`). Rerun shows `pass`, `3 new failures`, `not run`, or `skipped`. Every row is a `<details>` element: the `<summary>` is the row, and the expanded body is the evidence panel.
 
 5. Evidence panel (inside each row). Left border 4px in the verdict colour. Contents:
    - One-sentence summary in body type.
@@ -111,7 +111,7 @@ Sections and their exact copy (edit freely, keep the shape):
 5. Install and run. Three commands in one `<pre>`:
    ```
    go install github.com/<owner>/cli/impeach/cmd/entire-impeach@main
-   entire impeach HEAD --test "pytest -q" --out ./impeach-out
+   entire impeach HEAD --test "pytest -q --tb=no -rA" --out ./impeach-out
    open ./impeach-out/impeach.html
    ```
    Followed by: `Requires the Entire CLI with Checkpoints enabled and the entire-graph plugin. Works offline. No model calls unless you pass --model.`

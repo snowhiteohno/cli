@@ -1,0 +1,29 @@
+Staged changes are ready. Commit them so the commit is captured as an Entire checkpoint.
+
+Do exactly this and nothing else:
+1. Run: git -c commit.gpgsign=false commit -m 'impeach: name the two red workflows, and correct a stale test count
+
+The repository page shows a failing check and nothing explained it. Two of
+the six workflows on the tip fail, both inherited from the upstream repo this
+forks, and neither runs a line of Impeach code. E2E Tests needs three agent
+API keys, and GitHub does not expose a repository secret to a fork, so every
+agent leg starts empty and dies at Bootstrap agent; the roger-roger leg,
+which needs no key, passes, and the notify-slack job then fails on top for a
+missing webhook, which is the failure the log shows first and is not the
+cause. publish-git-remote-entire assumes an AWS role owned by the upstream
+organisation, which a fork is not authorised for.
+
+Both would fail identically on an unmodified fork with no Impeach in it, so
+they are structurally impossible here rather than broken. They stay enabled.
+Disabling them would buy a green page by hiding two failures, which is the
+move this tool exists to catch.
+
+The verification block also claimed 285 tests across 8 packages. It is 333
+across 9, and both figures now name the commit they were measured at, because
+an unqualified count is false again on the next commit. That is the same
+error, in the same document, as the Graph figures corrected earlier.
+
+Docs only. No behaviour changed.'
+2. Run: git log -1 --format='%H %(trailers:key=Entire-Checkpoint,valueonly)' and report it.
+
+Do not stage anything else, do not amend, do not modify any file, do not push, do not run tests.

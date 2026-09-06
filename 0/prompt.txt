@@ -1,0 +1,27 @@
+Staged changes are ready. Commit them so the commit is captured as an Entire checkpoint.
+
+Do exactly this and nothing else:
+1. Run: git -c commit.gpgsign=false commit -m 'impeach: step 1 verifies the two demo checkpoints, not a count
+
+Verified from a clean clone rather than from memory. The plain clone brings
+zero refs under refs/entire, the documented fetch brings them, and both demo
+checkpoints resolve with entire checkpoint explain. That path works.
+
+What did not survive checking was the comment beside it. It claimed 8
+checkpoints. The real figure is about 100, because a fork inherits the
+upstream repository checkpoints as well as this one, and it is not even
+stable: across two consecutive invocations the fetched ref count went from 29
+to 48 and the missing-metadata warning fell from 71 to 62, because the list
+command hydrates further refs from the remote as it runs. Any number written
+there is wrong by the next command, which is the same unqualified-figure
+error already corrected twice in this document.
+
+So step 1 now verifies the thing a reviewer actually needs, that the two demo
+checkpoint IDs resolve, and says plainly that the warning about remote
+checkpoints without local session metadata belongs to upstream and is
+harmless here.
+
+Docs only. No behaviour changed.'
+2. Run: git log -1 --format='%H %(trailers:key=Entire-Checkpoint,valueonly)' and report it.
+
+Do not stage anything else, do not amend, do not modify any file, do not push, do not run tests.

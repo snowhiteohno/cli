@@ -214,13 +214,13 @@ func TestAddWorktreesReplacesStaleCheckout(t *testing.T) {
 	if err := os.MkdirAll(head, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(head, ".git"), []byte("gitdir: elsewhere\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
 	f := runner.NewFake(
-		// The existing checkout is at some other commit.
-		runner.Call{Name: "git", Args: []string{"-C", head, "rev-parse", "HEAD"}, Stdout: "ffffffffffffffffffffffffffffffffffffffff\n"},
+		// The existing checkout is registered, at some other commit.
+		runner.Call{
+			Name:   "git",
+			Args:   []string{"-C", "/repo", "worktree", "list", "--porcelain"},
+			Stdout: "worktree /repo\nHEAD " + headSHA + "\nbranch refs/heads/main\n\nworktree " + head + "\nHEAD ffffffffffffffffffffffffffffffffffffffff\ndetached\n",
+		},
 		runner.Call{Name: "git", Args: []string{"-C", "/repo", "worktree", "remove", "--force", head}},
 		runner.Call{Name: "git", Args: []string{"-C", "/repo", "worktree", "add", "--detach", "--quiet", head, headSHA}},
 	)
@@ -236,6 +236,35 @@ func TestAddWorktreesReplacesStaleCheckout(t *testing.T) {
 	}
 }
 
+// Git keeps listing a worktree whose directory has been deleted, and reports
+// the commit it was last checked out at. Trusting that would make an audit
+// read a checkout that is not on disk, so a prunable record counts as absent
+// and the checkout is rebuilt.
+func TestAddWorktreesRebuildsAPrunableCheckout(t *testing.T) {
+	t.Parallel()
+	data := t.TempDir()
+	head := filepath.Join(data, "wt", headSHA[:12], "head")
+
+	f := runner.NewFake(
+		runner.Call{
+			Name:   "git",
+			Args:   []string{"-C", "/repo", "worktree", "list", "--porcelain"},
+			Stdout: "worktree " + head + "\nHEAD " + headSHA + "\ndetached\nprunable gitdir file points to non-existent location\n",
+		},
+		runner.Call{Name: "git", Args: []string{"-C", "/repo", "worktree", "add", "--detach", "--quiet", head, headSHA}},
+	)
+	if _, err := AddWorktrees(context.Background(), f, "/repo", data, headSHA, "", false); err != nil {
+		t.Fatalf("AddWorktrees() error = %v", err)
+	}
+	reqs := strings.Join(f.Requests(), " | ")
+	if !strings.Contains(reqs, "worktree add") {
+		t.Errorf("prunable checkout was reused instead of rebuilt; requests: %s", reqs)
+	}
+	if strings.Contains(reqs, "worktree remove") {
+		t.Errorf("prunable checkout should not need removing; requests: %s", reqs)
+	}
+}
+
 // An existing checkout already at the right commit is reused rather than
 // rebuilt, so a second audit of the same commit is cheap.
 func TestAddWorktreesReusesMatchingCheckout(t *testing.T) {
@@ -246,11 +275,12 @@ func TestAddWorktreesReusesMatchingCheckout(t *testing.T) {
 	if err := os.MkdirAll(head, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(head, ".git"), []byte("gitdir: elsewhere\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
 	f := runner.NewFake(
-		runner.Call{Name: "git", Args: []string{"-C", head, "rev-parse", "HEAD"}, Stdout: headSHA + "\n"},
+		runner.Call{
+			Name:   "git",
+			Args:   []string{"-C", "/repo", "worktree", "list", "--porcelain"},
+			Stdout: "worktree " + head + "\nHEAD " + headSHA + "\ndetached\n",
+		},
 	)
 	if _, err := AddWorktrees(context.Background(), f, "/repo", data, headSHA, "", false); err != nil {
 		t.Fatalf("AddWorktrees() error = %v", err)

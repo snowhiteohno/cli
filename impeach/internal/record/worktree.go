@@ -107,15 +107,54 @@ func (w *Worktrees) add(ctx context.Context, path, commit string) error {
 }
 
 // headOf reports the commit an existing worktree is checked out at.
+//
+// The question is asked of git rather than of the filesystem, deliberately.
+// Statting a .git entry inside the directory answered a slightly different
+// question, "is something git-shaped here", which counts a directory that is
+// not one of this repository's worktrees at all, and it duplicated a probe the
+// host CLI owns and guards against being reimplemented. `git worktree list`
+// answers exactly what add needs to know: is this path registered as a
+// worktree of this repository, and at what commit.
+//
+// A prunable record is treated as absent. Git still lists a worktree whose
+// directory has been deleted, and reporting its recorded HEAD would make add
+// reuse a checkout that is not there.
 func (w *Worktrees) headOf(ctx context.Context, path string) (string, bool) {
-	if _, err := os.Stat(filepath.Join(path, ".git")); err != nil {
-		return "", false
-	}
-	stdout, _, exit, err := w.run.Run(ctx, "git", []string{"-C", path, "rev-parse", "HEAD"}, nil)
+	stdout, _, exit, err := w.git(ctx, "worktree", "list", "--porcelain")
 	if err != nil || exit != 0 {
 		return "", false
 	}
-	return strings.TrimSpace(string(stdout)), true
+	want := resolvePath(path)
+	// Porcelain output is one record per worktree, separated by a blank line.
+	for _, record := range strings.Split(string(stdout), "\n\n") {
+		var head string
+		matched, prunable := false, false
+		for _, line := range strings.Split(record, "\n") {
+			line = strings.TrimSpace(line)
+			switch {
+			case strings.HasPrefix(line, "worktree "):
+				matched = resolvePath(strings.TrimPrefix(line, "worktree ")) == want
+			case strings.HasPrefix(line, "HEAD "):
+				head = strings.TrimSpace(strings.TrimPrefix(line, "HEAD "))
+			case line == "prunable" || strings.HasPrefix(line, "prunable "):
+				prunable = true
+			}
+		}
+		if matched && !prunable && head != "" {
+			return head, true
+		}
+	}
+	return "", false
+}
+
+// resolvePath makes two spellings of one directory comparable. Git prints
+// worktree paths with symlinks resolved, while ours are joined from the data
+// directory, and on macOS both the cache and temp roots are symlinks.
+func resolvePath(path string) string {
+	if resolved, err := filepath.EvalSymlinks(strings.TrimSpace(path)); err == nil {
+		return filepath.Clean(resolved)
+	}
+	return filepath.Clean(strings.TrimSpace(path))
 }
 
 func (w *Worktrees) remove(ctx context.Context, path string) error {

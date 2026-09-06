@@ -198,7 +198,7 @@ func newHTMLRow(row Row) htmlRow {
 		// The claim is never truncated in HTML. Truncation is for the
 		// terminal only.
 		Text:           Scrub(row.Claim.Text),
-		Family:         row.Claim.Family.String(),
+		Family:         FamilyLabel(row.Claim),
 		Status:         string(row.Verdict.Status),
 		Summary:        Scrub(row.Verdict.Summary),
 		ReasonPhrases:  phrases(row.Verdict.Reasons),

@@ -51,6 +51,7 @@ entire impeach <checkpoint-id | commit-ish> [flags]
   --out PATH          write json and html reports here
   --fail-on impeached|uncorroborated   non-zero exit when any row has this verdict
   --model CMD         opt-in extractor; runs CMD with a prompt on stdin, expects JSON claims
+  --model-turns N     cap on assistant turns sent to --model (default 20)
   --adapter auto|claude-code   transcript adapter; auto detects from the checkpoint
   --no-rerun          skip graph verify
 ```

@@ -99,6 +99,20 @@ func New(cp Checkpoint, in Inputs, rows []Row, un *verify.UnrequestedResult,
 	return r
 }
 
+// FamilyLabel names a claim's family, marking anything a model produced.
+//
+// The PRD requires model-generated claims to be identifiable in the report.
+// A reader has to be able to tell at a glance which rows a third party
+// suggested, because the deterministic library and a model are not equally
+// trustworthy about what was even claimed. The verdict itself is unaffected:
+// the record decides that either way.
+func FamilyLabel(c claims.Claim) string {
+	if c.Extractor == "" || c.Extractor == "pattern" {
+		return c.Family.String()
+	}
+	return c.Family.String() + " (model)"
+}
+
 // statusRank orders the table so the impeachments are read first.
 func statusRank(s verify.Status) int {
 	switch s {

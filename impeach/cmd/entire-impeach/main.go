@@ -61,6 +61,10 @@ type options struct {
 	// scrub rewrites absolute paths and identities out of a recording before
 	// it is written, because scenarios are committed.
 	scrub bool
+	// modelTurns caps how many assistant turns reach the model command, so
+	// enabling --model on a long session cannot quietly send a large amount
+	// of text to a third party.
+	modelTurns int
 }
 
 func main() {
@@ -119,6 +123,7 @@ func parseFlags(argv []string, stderr io.Writer) (*options, error) {
 	fs.StringVar(&opts.record, "record", "", "record every external call to this directory, for replay")
 	fs.StringVar(&opts.replay, "replay", "", "replay a recorded directory instead of running anything")
 	fs.BoolVar(&opts.scrub, "scrub", true, "scrub absolute paths and identities out of a recording")
+	fs.IntVar(&opts.modelTurns, "model-turns", 20, "cap on assistant turns sent to the --model command")
 
 	fs.Usage = func() {
 		fmt.Fprintf(stderr, `entire impeach cross-examines an agent's claims against the record.
@@ -228,6 +233,95 @@ func audit(ctx context.Context, opts *options, stdout, stderr io.Writer) error {
 		return err
 	}
 
+	// Session mode loops the per-checkpoint pipeline and prints one section
+	// each. Everything below is unchanged per checkpoint; only the reference
+	// being audited moves.
+	if opts.session {
+		return auditSession(ctx, opts, repo, log, resolver, res, stdout, stderr)
+	}
+	return auditOne(ctx, opts, repo, log, resolver, res, stdout, stderr, nil)
+}
+
+// auditSession audits every checkpoint in the session the reference belongs
+// to, oldest first.
+//
+// The prompt corpus for unrequested detection is the union across the whole
+// session, because a symbol asked for in the first checkpoint is not
+// unrequested when it appears in the third. Scoping the corpus per checkpoint
+// would flag most of a multi-step session.
+func auditSession(ctx context.Context, opts *options, repo string, log *runner.Logged,
+	resolver *checkpoint.Resolver, res *checkpoint.Resolved, stdout, stderr io.Writer) error {
+
+	if len(res.SessionIDs) == 0 {
+		return fmt.Errorf("checkpoint %s reports no session, so --session has nothing to loop over", res.ID)
+	}
+	sessionID := res.SessionIDs[0]
+
+	ids, err := resolver.SessionCheckpoints(ctx, sessionID)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(stdout, "Session %s: %d checkpoints, oldest first.\n", sessionID, len(ids))
+
+	// First pass collects the prompts, so the union corpus is known before
+	// any verdict is decided.
+	corpus := sessionPrompts(ctx, resolver, repo, opts, ids)
+
+	var failOn bool
+	for i, id := range ids {
+		fmt.Fprintf(stdout, "\n%s\nCheckpoint %d of %d: %s\n%s\n",
+			strings.Repeat("=", 72), i+1, len(ids), id, strings.Repeat("=", 72))
+
+		one, err := resolver.Resolve(ctx, id)
+		if err != nil {
+			fmt.Fprintf(stdout, "Could not resolve %s: %v\n", id, err)
+			continue
+		}
+		err = auditOne(ctx, opts, repo, log, resolver, one, stdout, stderr, corpus)
+		switch {
+		case errors.Is(err, errFailOn):
+			failOn = true
+		case err != nil:
+			// One checkpoint failing does not end the session audit; the
+			// remaining sections are still worth having.
+			fmt.Fprintf(stdout, "Checkpoint %s could not be audited: %v\n", id, err)
+		}
+	}
+	if failOn {
+		return errFailOn
+	}
+	return nil
+}
+
+// sessionPrompts gathers the prompts across a session for the union corpus.
+// A checkpoint whose transcript cannot be read simply contributes nothing.
+func sessionPrompts(ctx context.Context, resolver *checkpoint.Resolver, repo string,
+	opts *options, ids []string) []string {
+
+	var out []string
+	for _, id := range ids {
+		one, err := resolver.Resolve(ctx, id)
+		if err != nil {
+			continue
+		}
+		stream, err := readTestimony(ctx, resolver, one, repo, opts)
+		if err != nil {
+			continue
+		}
+		out = append(out, stream.Prompts()...)
+	}
+	return out
+}
+
+// auditOne runs the pipeline for a single checkpoint.
+//
+// promptCorpus overrides the prompts used for unrequested detection. It is nil
+// for a single-checkpoint run, where the checkpoint's own prompts are the
+// right corpus, and set in session mode to the union.
+func auditOne(ctx context.Context, opts *options, repo string, log *runner.Logged,
+	resolver *checkpoint.Resolver, res *checkpoint.Resolved, stdout, stderr io.Writer,
+	promptCorpus []string) error {
+
 	dataDir, err := record.DataDir()
 	if err != nil {
 		return err
@@ -272,7 +366,7 @@ func audit(ctx context.Context, opts *options, stdout, stderr io.Writer) error {
 			res.ID, len(res.Ambiguous)+1))
 	}
 
-	rep := assemble(res, stream, rec, opts, log, notes)
+	rep := assemble(res, stream, rec, opts, log, notes, promptCorpus)
 
 	if err := emit(rep, opts, stdout); err != nil {
 		return err
@@ -419,12 +513,31 @@ func testimonyNotes(s *transcript.Stream) []string {
 
 // assemble runs the extractors and the verifiers and builds the report.
 func assemble(res *checkpoint.Resolved, stream *transcript.Stream, rec *auditRecord,
-	opts *options, log *runner.Logged, notes []string) *report.Report {
+	opts *options, log *runner.Logged, notes []string, promptCorpus []string) *report.Report {
 
-	extractor := claims.Pattern{}
-	found, err := extractor.Extract(stream.Events)
+	pattern := claims.Pattern{}
+	names := []string{pattern.Name()}
+	found, err := pattern.Extract(stream.Events)
 	if err != nil {
 		notes = append(notes, fmt.Sprintf("Claim extraction failed (%v).", err))
+	}
+
+	// The model extractor is opt in and adds to the pattern library rather
+	// than replacing it. Its claims carry the same type and go through the
+	// same verifiers, so a model can suggest what to check but never what the
+	// answer is.
+	if opts.model != "" {
+		m := &claims.Model{Command: opts.model, Runner: log, MaxTurns: opts.modelTurns}
+		extra, mErr := m.Extract(stream.Events)
+		if mErr != nil {
+			notes = append(notes, fmt.Sprintf("Model extractor failed (%v); pattern claims are unaffected.", mErr))
+		} else {
+			found = append(found, extra...)
+			names = append(names, m.Name())
+		}
+		for _, w := range m.Warnings {
+			notes = append(notes, "Model extractor: "+w+".")
+		}
 	}
 
 	vr := &verify.Record{
@@ -455,12 +568,18 @@ func assemble(res *checkpoint.Resolved, stream *transcript.Stream, rec *auditRec
 		rows = append(rows, report.Row{Claim: c, Verdict: v.Verify(c, vr)})
 	}
 
-	unrequested := verify.DetectUnrequested(rec.Changes, stream.Prompts())
+	// In session mode the corpus is the union of every checkpoint's prompts,
+	// so a symbol asked for earlier is not flagged when it lands later.
+	prompts := promptCorpus
+	if prompts == nil {
+		prompts = stream.Prompts()
+	}
+	unrequested := verify.DetectUnrequested(rec.Changes, prompts)
 
 	ch := stream.Channels()
 	in := report.Inputs{
 		Adapter:      adapterName(stream, opts),
-		Extractors:   []string{extractor.Name()},
+		Extractors:   names,
 		TestCommand:  rec.TestCommand,
 		Rerun:        rec.Rerun != nil && rec.Rerun.Status != record.RerunNotRun,
 		ModelCommand: opts.model,
@@ -595,15 +714,38 @@ func readTestimony(ctx context.Context, resolver *checkpoint.Resolver, res *chec
 		return nil, err
 	}
 
-	cc := transcript.ClaudeCode{RepoRoot: repo}
-	adapters := []transcript.Adapter{cc}
-
-	if opts.adapter == "auto" {
-		if _, err := transcript.Detect(t.Raw, adapters); err != nil {
-			return nil, err
-		}
+	a, err := pickAdapter(opts.adapter, repo, t.Raw)
+	if err != nil {
+		return nil, err
 	}
-	return cc.ParseStream(t.Raw)
+	return a.ParseStream(t.Raw)
+}
+
+// pickAdapter chooses the transcript adapter.
+//
+// The registry is the boundary that absorbs a change of agent: a new agent is
+// a new entry here and nothing else. With --adapter auto the transcript
+// decides; with an explicit name the user does, which matters when a
+// transcript is recognised by more than one adapter or by none.
+func pickAdapter(name, repo string, raw []byte) (*transcript.ClaudeCode, error) {
+	cc := &transcript.ClaudeCode{RepoRoot: repo}
+	registry := map[string]*transcript.ClaudeCode{"claude-code": cc}
+
+	if name != "auto" {
+		a, ok := registry[name]
+		if !ok {
+			return nil, fmt.Errorf("no adapter named %q", name)
+		}
+		return a, nil
+	}
+	adapters := make([]transcript.Adapter, 0, len(registry))
+	for _, a := range registry {
+		adapters = append(adapters, a)
+	}
+	if _, err := transcript.Detect(raw, adapters); err != nil {
+		return nil, err
+	}
+	return cc, nil
 }
 
 func yesNo(b bool) string {

@@ -667,3 +667,69 @@ are pinned by unit tests against hand-built records in `internal/verify`.
 Recording them would mean instructing an agent to make a false statement, and
 a fabricated impeachment in the fixtures of a tool about false claims is not a
 trade worth making. `fixtures/recorded/README.md` says so plainly.
+
+## Phase 9: session mode, the model extractor, adapter selection
+
+Done: the opt-in `--model` extractor, `--session`, and an explicit adapter
+registry. 285 Go tests.
+
+### What the model extractor is allowed to see
+
+This is the only part of Impeach that can send anything off the machine, so
+the boundary is narrow and tested directly rather than described:
+
+- One assistant turn at a time. Never a prompt, never a tool output, never a
+  file. A test asserts on the actual stdin bytes and fails if a planted
+  `SECRET USER PROMPT` or `SECRET TOOL OUTPUT` appears.
+- `--model-turns`, default 20, caps how many turns are sent, so enabling the
+  flag on a long session cannot quietly become a large amount of outbound
+  text. Dropping turns is reported, not silent. This flag is an addition to
+  the documented surface and is recorded in `docs/PRD.md`.
+- The command runs as argv through the `Runner`. There is no shell, so the
+  command line is tokenized in `splitCommand` and an unbalanced quote is an
+  error rather than a guess.
+- The report header names the exact command, and every model claim is marked
+  in the table and the HTML as `family (model)`, because the PRD requires
+  model-generated claims to be identifiable. A reader has to be able to tell
+  which rows a third party suggested.
+
+What the model is not allowed to decide: anything. It produces the same
+`Claim` type the pattern library does and goes through the same verifiers, so
+it can suggest what to check but never what the answer is. Even the execution
+kind and the safety subtype are decided by the deterministic pattern set
+rather than taken from the model's reply, because that library already encodes
+those distinctions and a model's opinion about them is not evidence.
+
+Unusable output is dropped with a warning per turn: prose, broken JSON, an
+object instead of a list, an unknown family. A fenced code block is tolerated,
+because models emit them constantly. A failing command is a dropped turn, not
+a failed audit, so the deterministic path always survives it.
+
+### Session mode
+
+`--session` resolves the reference, takes its session id, lists that session's
+checkpoints with `entire checkpoint list --json --session <id>`, and loops the
+per-checkpoint pipeline oldest first. The CLI lists newest first; a session
+reads better in the order the work happened.
+
+One decision worth recording: the prompt corpus for unrequested detection is
+the union across the whole session, gathered in a first pass before any
+verdict is decided. Scoping it per checkpoint would flag most of a multi-step
+session, because a symbol asked for in the first checkpoint and delivered in
+the third would look unrequested in the third. A checkpoint that fails to
+resolve or whose transcript cannot be read contributes nothing and does not
+end the run; the remaining sections are still worth having. `--fail-on` is
+sticky across the session, so one impeachment anywhere makes the exit code 2.
+
+### Adapter selection
+
+The registry is explicit now. `--adapter auto` lets the transcript decide,
+and an explicit name skips detection, which matters when a transcript is
+recognised by more than one adapter or by none. With `auto` and nothing
+recognisable the error names what was tried, and the caller turns that into
+unverifiable rows rather than a crash, because a transcript nobody can read is
+a missing channel and missing data is a state.
+
+Only `claude-code` exists. A second agent is one entry here and nothing else,
+which is the claim the four-boundary design has been making all along and is
+now the smallest it will ever be to test.

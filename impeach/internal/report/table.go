@@ -45,7 +45,7 @@ func Table(w io.Writer, r *Report) error {
 	for _, row := range r.Rows {
 		rows = append(rows, [5]string{
 			string(row.Verdict.Status),
-			row.Claim.Family.String(),
+			FamilyLabel(row.Claim),
 			truncate(row.Claim.Text, claimWidth),
 			phrases(row.Verdict.Reasons),
 			rerunLabel(row.Verdict.Rerun),

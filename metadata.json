@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.10.6-nightly.202609050622.61dac01ed.0.20260905201708-3dbdf8b83c39+dirty",
+  "checkpoint_id": "01M1TZD8XP6KS193D4Z3VF3QZ4",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "impeach/internal/record/worktree.go",
+    "impeach/internal/record/worktree_test.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 46,
+    "cache_creation_tokens": 36565,
+    "cache_read_tokens": 3947795,
+    "output_tokens": 18692,
+    "api_call_count": 23
+  }
+}

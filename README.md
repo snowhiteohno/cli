@@ -788,6 +788,10 @@ entire <command> --help    # Command-specific help
 - **GitHub Issues:** Report bugs or request features at https://github.com/entireio/cli/issues
 - **Contributing:** See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines
 
+## Impeach
+
+Impeach is a CLI plugin built in this fork that cross-examines what an AI coding agent claimed it did against the record of what it actually did; see [impeach/](impeach/) and [impeach/docs/PRD.md](impeach/docs/PRD.md).
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.

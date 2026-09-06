@@ -393,13 +393,16 @@ void main() {
   // is the same physical size in portrait and landscape.
   vec2 toLight = (fragPx - uLight) / vec2(uLightRadius * 1.18, uLightRadius);
   float d = length(toLight);
-  float lamp = 1.0 - smoothstep(0.28, 1.05, d);
-  lamp = pow(lamp, 1.15);
+  float lamp = 1.0 - smoothstep(0.10, 1.06, d);
+  // Below 1.0 the core stays wide and only the rim falls away, which is what
+  // a real lamp on paper does. The old 1.15 shrank the bright centre to a
+  // point and left most of the cone in the tail.
+  lamp = pow(lamp, 0.78);
 
   vec3 lampColor = vec3(1.0, 0.957, 0.863); // --lamp #FFF4DC
   // The lamp warms and lifts the paper, and lifts grain contrast inside the
   // cone so the surface looks raked by light.
-  paper = mix(paper, paper * lampColor + lampColor * 0.16, lamp * mix(0.72, 0.9, uDark));
+  paper = mix(paper, paper * lampColor + lampColor * 0.22, lamp * mix(0.92, 0.98, uDark));
   paper += (g - 0.5) * 0.07 * lamp;
 
   // ---- the record --------------------------------------------------------
@@ -442,9 +445,15 @@ void main() {
 
   vec3  inkCol   = mix(recordCol, bleedCol, bleedMask);
   float inkAlpha = inkA * mix(1.0, pulse, bleedMask);
-  // Under the lamp only. This is the whole idea: the record is invisible in
-  // ordinary light. The bleed reaches full strength where the light lands.
-  inkAlpha *= mix(lamp * 0.92, min(1.0, lamp * 1.35), bleedMask);
+  // The lamp deepens the ink; it no longer decides whether there is any. At
+  // zero floor the page read as blank paper until the cursor found the exact
+  // line, so the entire mechanic was invisible to anyone reading quickly, and
+  // a lower floor was still too faint whenever the lamp sat elsewhere. The
+  // record is legible wherever the light is, and the contradiction sits
+  // higher still, because it is the one line that must not be missed.
+  float plain = 0.60 + 0.40 * lamp;
+  float bled  = 0.78 + 0.26 * lamp;
+  inkAlpha *= mix(min(1.0, plain), min(1.0, bled), bleedMask);
 
   vec3 col = mix(paper, inkCol, clamp(inkAlpha * uRecordOn, 0.0, 1.0));
 

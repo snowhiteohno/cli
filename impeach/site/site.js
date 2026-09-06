@@ -190,7 +190,7 @@
       canvas.width = W;
       canvas.height = H;
       gl.viewport(0, 0, W, H);
-      radius = Math.min(r.width, r.height) * 0.22 * dpr;
+      radius = Math.min(r.width * 0.40, r.height * 0.62) * dpr;
 
       var built = buildRecordTexture(r.width, r.height);
       bleed = built.rects;
@@ -297,7 +297,8 @@
         start();
       },
       hasBleed: function () { return bleed.length > 0; },
-      interacted: function () { return interacted; }
+      interacted: function () { return interacted; },
+      bleedCentroid: centroid
     };
   }
 
@@ -460,10 +461,12 @@
 
   // The markup's hint describes the static page, because that is what a
   // reader without script or without WebGL2 actually gets. The instruction
-  // to move the light is added only once there is a light to move.
+  // to move the light is added only once there is a light to move, and it no
+  // longer claims the record is hidden, because it is not: the ink shows
+  // through and the lamp deepens it.
   function promiseTheLight() {
     var hint = document.querySelector(".hero-hint");
-    if (hint) hint.textContent = "Move the light. The record is under the paper.";
+    if (hint) hint.textContent = "The record shows through the paper. Move the light across it.";
   }
 
   /* ---------------------------------------------------------------- boot */
@@ -516,13 +519,36 @@
       scene.point(e.touches[0].clientX - r.left, e.touches[0].clientY - r.top, true);
     }, { passive: true });
 
-    // Touch and pointerless devices get a slow drift across the bleed, so the
-    // contradiction is discoverable without a cursor. Desktop does not drift
-    // once the visitor has taken over.
+    // An introductory sweep on every device. The lamp travels across the
+    // contradicting line once and settles on it, so the mechanic performs
+    // itself: someone who reads the headline and scrolls has already seen the
+    // record surface and the red. It yields the moment a real pointer moves,
+    // and never runs under reduced motion, where the record is plain text.
+    var introDone = false;
+    (function intro() {
+      var started = null;
+      requestAnimationFrame(function step(now) {
+        if (scene.interacted()) { introDone = true; return; }
+        if (started === null) started = now;
+        var t = Math.min(1, (now - started) / 2600);
+        var r = canvas.getBoundingClientRect();
+        var c = scene.bleedCentroid();
+        // Ease in from the left of the line and settle over its middle.
+        var e = 1 - Math.pow(1 - t, 3);
+        var ux = 0.16 + (c[0] - 0.16) * e;
+        scene.point(ux * r.width, c[1] * r.height, false);
+        if (t < 1) requestAnimationFrame(step);
+        else introDone = true;
+      });
+    })();
+
+    // Touch and pointerless devices keep drifting after the sweep, so the
+    // contradiction stays discoverable without a cursor.
     if (!hasPointer) {
       var t = 0;
       (function drift() {
         if (scene.interacted()) return;
+        if (!introDone) { requestAnimationFrame(drift); return; }
         t += 0.006;
         var r = canvas.getBoundingClientRect();
         var cx = r.width * (0.5 + 0.22 * Math.sin(t));

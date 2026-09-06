@@ -20,6 +20,7 @@ import (
 	"html/template"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -115,22 +116,43 @@ func extractSection(page, id string) (string, error) {
 // copy a reproduce command and run it. A committed one must not: it would
 // publish the author's home directory to anyone who opens the page.
 func pathScrubber(repo string) func(string) string {
+	// Only absolute paths, and only ones long enough to be unambiguous.
+	//
+	// An earlier version also replaced the raw --repo argument as given.
+	// Passing --repo .. then rewrote every literal ".." in the report, which
+	// turned pytest's "...." progress line into "<repo><repo>" and corrupted
+	// real evidence. A scrubber that damages the output it is protecting is
+	// worse than no scrubber, so a replacement now has to be an absolute
+	// path of at least this many characters to be applied at all.
+	const minLen = 8
+
 	var pairs [][2]string
+	add := func(from, to string) {
+		if len(from) >= minLen && filepath.IsAbs(from) {
+			pairs = append(pairs, [2]string{from, to})
+		}
+	}
 	if repo != "" {
 		if abs, err := filepath.Abs(repo); err == nil {
-			pairs = append(pairs, [2]string{abs, "<repo>"})
+			add(abs, "<repo>")
 		}
-		pairs = append(pairs, [2]string{repo, "<repo>"})
 	}
-	if home, err := os.UserHomeDir(); err == nil && home != "" {
-		pairs = append(pairs, [2]string{home, "<home>"})
+	if home, err := os.UserHomeDir(); err == nil {
+		add(home, "<home>")
 	}
-	if u := os.Getenv("USER"); len(u) > 2 {
-		pairs = append(pairs, [2]string{u, "<user>"})
-	}
+	// Longest first, so a home directory nested inside a repository path, or
+	// the reverse, does not leave a partly rewritten string behind.
+	sort.Slice(pairs, func(i, j int) bool { return len(pairs[i][0]) > len(pairs[j][0]) })
+
+	// The user name is replaced only as a whole path segment, never as a bare
+	// substring, for the same reason.
+	user := os.Getenv("USER")
 	return func(s string) string {
 		for _, p := range pairs {
 			s = strings.ReplaceAll(s, p[0], p[1])
+		}
+		if len(user) > 2 {
+			s = strings.ReplaceAll(s, "/"+user+"/", "/<user>/")
 		}
 		return s
 	}

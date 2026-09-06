@@ -1116,3 +1116,30 @@ in the meantime.
 This is a real error in FRONTEND_SPEC.md rather than a missing step, and it is
 the tenth thing in `docs/` that turned out not to survive contact with the
 tools.
+
+### A scrubber that corrupted the thing it was protecting
+
+Checking that `gen-site` was reproducible found a data-corruption bug in it,
+which is worth recording because the failure mode is the nastiest kind:
+silent, in a file about to be committed and published.
+
+The path scrubber replaced the raw `--repo` argument as given, as well as its
+absolute form. Running `gen-site --repo ..` therefore rewrote every literal
+`..` in the report, and pytest's progress line `tests/test_api.py ....`
+became `tests/test_api.py <repo><repo>`. Real evidence, destroyed, in the
+sample report the landing page shows to everyone.
+
+A replacement now has to be an absolute path of at least eight characters to
+be applied at all, pairs are sorted longest first so a home directory nested
+inside a repository path cannot leave a half-rewritten string, and the user
+name is only replaced as a whole path segment rather than as a bare substring.
+Five tests pin it, including one that asserts the exact pytest progress line
+survives every relative `--repo` form.
+
+Determinism is now verified both ways: regenerating from an absolute path and
+from `..` both produce a byte-identical site.
+
+The lesson is the same one this build keeps relearning, in a new place: the
+bug was not found by reading the scrubber, which looked obviously correct, but
+by running it twice and comparing. A scrubber that damages the output it is
+protecting is worse than no scrubber, and only a second run shows it.

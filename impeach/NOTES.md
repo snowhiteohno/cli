@@ -608,3 +608,62 @@ Two notes worth keeping:
 - The fork is public, so the checkpoint refs on it are public. That is Entire's
   default storage behaviour, not an Impeach decision, and it is why the
   committed fixtures are scrubbed of paths, user names and author identity.
+
+## Phase 7, and the push that GitHub rejected
+
+Done: JSON report at `--out/impeach.json` following the documented schema, the
+credential scrubber the security policy required, `impeach record` and
+`--replay` as two implementations of the one `Runner`, two recorded scenarios
+from real captured sessions, and nine end-to-end tests that drive the real
+entry point offline. 245 Go tests.
+
+### The bug that would have made the fixtures worthless
+
+Scrubbing recorded argv is what makes a scenario portable, and it is also what
+broke replay on the very first git call: a recording rewritten to `<repo>` can
+never match a live call still carrying the real absolute path. Recording and
+replay have to be symmetric. `Fake` gained a `Normalize` hook applying the
+identical transformation to each live lookup key. Without it the scenarios
+would have been write-only, which is the kind of defect that only shows up if
+you actually replay one.
+
+A second, smaller version of the same lesson: the scenarios were recorded
+while running as an installed plugin, so their worktree paths sit under
+`ENTIRE_PLUGIN_DATA_DIR`. The replay tests pin that variable, because with it
+unset `DataDir()` falls back to `~/.cache/impeach` and every worktree call
+misses.
+
+### GitHub push protection rejected the push, over our own test fixture
+
+`git push` was declined with `GH013: Repository rule violations found`. The
+cause was `internal/report/scrub_test.go:19`, a plausible-looking fake Slack
+token used to test the scrubber. GitHub cannot tell a test fixture from a
+leak, and it is right not to try.
+
+Fixed properly rather than by clicking the unblock link: every sample in the
+scrubber tests is now assembled from parts at run time, so the pattern is
+still exercised and no complete token literal exists in the source. Checked
+the whole tree afterwards for scannable shapes; none remain.
+
+The offending commit had never reached `main`, since only the checkpoint refs
+had gone through, so the tip was amended rather than followed by a fix
+commit. That is not a squash and nothing remote depended on the old sha. The
+`Entire-Checkpoint` trailer survives an amend because it lives in the message,
+so checkpoint `01M1TMG4W06DK3HM424MDAZBY1` still resolves, now to
+`4dfb799`. Worth noting the small inconsistency this leaves: the captured
+session's own transcript records it committing `bc5cc09`, a sha that no longer
+exists.
+
+There is an irony worth keeping. A tool built to catch unverified claims was
+blocked from shipping by an automated check that did not believe its
+claim that a string was only a test fixture. The check was correct to be
+suspicious and the fix was to stop making the claim necessary.
+
+### Scenarios deliberately absent
+
+Three of the five the architecture lists, `stale`, `scope` and `safety`, are
+not recorded, because both sessions available were accurate. Those verdicts
+are pinned by unit tests against hand-built records in `internal/verify`.
+Recording them would mean instructing an agent to make a false statement, and
+a fabricated impeachment in the fixtures of a tool about false claims is not a
+trade worth making. `fixtures/recorded/README.md` says so plainly.

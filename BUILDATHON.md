@@ -550,18 +550,40 @@ the agent under audit is careful.
 
 Next steps:
 
-- The structural, safety and reading verifiers, and the unrequested detector.
-  The record layer already supplies everything they need, so they are verifier
-  logic rather than new plumbing.
-- JSON and self-contained HTML reports. The `Report` struct that both would
-  render from already exists and is what the table renders from today.
-- `impeach record` and the five committed replay scenarios. The `Recording`
-  and replaying `Fake` halves of the Runner already exist and are tested round
-  trip, so this is wiring rather than design.
-- `--session`, the opt-in `--model` extractor, and `--adapter auto` across
-  more than one adapter.
-- A GitHub Action wrapping `entire impeach --fail-on impeached`. The exit code
-  contract is already in place.
+**This list was stale, and the audit that found it is worth recording.** Asked
+what was left and checked the tree rather than recalling it. Five of the six
+bullets that stood here described work that was already built and tested: the
+structural, safety and reading verifiers, the unrequested detector, the JSON
+and HTML renderers, `impeach record` with its replay scenarios, `--session`
+and the opt-in `--model` extractor. All of that ships today and is covered by
+the 327 tests. The list was written at the phase 6 stop and never revised,
+while the checkpoint table above already recorded the same four verifiers and
+the unrequested detector as landed at that very checkpoint. So this document
+said two different things about one piece of code, and the wrong one sat under
+a heading a reader would trust. For a submission about a tool that catches
+claims nobody checked, an unchecked claim in the submission is the error worth
+writing down rather than quietly overwriting. What follows is what is
+genuinely open, each item verified against the tree.
+
+- **A second transcript adapter.** There is one, claude-code. Other agents
+  degrade to unverifiable rows by design, which is truthful output rather than
+  a failure, so this widens coverage rather than repairing a defect.
+- **`gen-site` will overwrite the landing page.** It still renders an
+  `index.html` of its own from a Go template, while the shipped page is hand
+  written, so running it replaces that page with the older generated version.
+  Nothing runs it today and the Pages workflow publishes the committed
+  directory rather than building it, so the site is not at risk right now, but
+  it is a live footgun for the next person. `impeach/site/README.md` records
+  the safe subset to run until the template is updated. The same fix covers a
+  second half: the hero's testimony and record lines are hardcoded in
+  `index.html` to match `sample/impeach.json`, and should be read from that
+  file at build time instead.
+- **Two more recorded replay scenarios.** Three are committed:
+  `discount-rename`, `rerun-regression` and `redacted-toollog`. The plan named
+  five. The `Recording` and replaying `Fake` halves are done and tested round
+  trip, so each further scenario is a capture rather than new code.
+- **A GitHub Action wrapping `entire impeach --fail-on impeached`.** The exit
+  code contract is in place and nothing wraps it yet.
 - **Impeach auditing its own build session is not possible for this repository
   and is not being attempted.** The session that wrote Impeach predates the git
   hooks, so its commits carry no checkpoint and there is nothing to resolve.

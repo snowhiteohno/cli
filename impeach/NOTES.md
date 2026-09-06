@@ -1238,3 +1238,176 @@ Also documented the six flags that existed but appeared nowhere in the command
 surface: `--record`, `--replay`, `--scrub`, `--repo`, `--keep-worktrees` and
 `--version`. A re-run of the audit now reports no drift in either direction,
 17 flags documented and 17 implemented.
+
+## The site rebuild, six steps in four commits
+
+Recorded after the fact, which is itself the first thing to note. `HANDOFF.md`
+says a fresh session should be able to reconstruct the build from the latest
+checkpoint plus this file, and for the rebuild it could not: four commits
+landed with the full account in their messages and nothing here. The messages
+are good and they are the source for what follows, but a commit message is
+found by whoever thinks to look for it, and this file is read first. Written
+up now, from the four messages plus the tree, not from memory.
+
+Checkpoints, in order: `01M1TWMC6VVVJZEA4XH2R6PYFP` (step 1),
+`01M1TX1WZ1E2YBZ6ZS27R8P97Z` (steps 2 and 3),
+`01M1TXDQMT3F7S5B2K91E01MJF` (steps 4 and 5),
+`01M1TYA01Q0GTN2AQ61BWTSMSF` (step 6, the QA pass).
+
+Nothing outside `impeach/site/` changed except `internal/report/site_test.go`.
+The test count stayed at 327 throughout, because the rebuild added no
+behaviour to the tool.
+
+### What it is now
+
+A hand written page, not a generated one. Ten sections, two self hosted
+variable fonts at 68KB together (latin subset woff2, already subset because
+there is no pyftsubset on this machine), and a hero that is a fragment shader
+on a full screen quad in raw WebGL2 with no libraries: procedural paper with
+two octaves of value noise and a low frequency fiber field, a Canvas2D record
+texture sampled through a noise driven domain warp so the ink reads as
+absorbed, and up to four bleed rectangles that tint to the report's impeached
+red under the lamp. In ordinary light the paper shows nothing. The context
+ledger performs the asymmetry it describes: a ragged edged bar of ink sweeps
+the tool log, the state word flips to redacted, and the count falls from three
+corroborated to one. The terminal types its command and reveals the verdict
+table a row at a time, then exits 2.
+
+Every scene is staged by script and settled in CSS. Without JavaScript the
+markup already carries the conclusion: rules drawn, terminal complete, figures
+at their real values, ledger at its redacted end state. Reduced motion takes
+the same path with the transitions removed.
+
+### Four places the brief met the repository
+
+- **Two figures in the brief were stale.** It asked for 197 Go tests and 18
+  pytest. The real numbers are 327 and 25, and the real ones are on the page.
+  A false figure in 48px type, on a page about false claims, is the one thing
+  this project cannot ship.
+- **The em dash in the quoted testimony stays.** It is the agent's own
+  wording, it lives in `sample/impeach.json`, and the page is tested for
+  matching that file byte for byte. Editing quoted evidence to satisfy a house
+  style would be falsifying the evidence. Zero em dashes were authored; the
+  only ones are inside quoted material, which is how `testdata/` and
+  `fixtures/recorded/` are already treated.
+- **`site_test.go` wanted the report's lead block byte for byte**, and that
+  file was out of the brief's scope. Rather than work around it, those 862
+  bytes became the no JavaScript and screen reader layer, which the brief
+  asked for independently. One set of bytes now serves the test, the
+  accessibility requirement and the no JS requirement, and the anti drift
+  guarantee survives.
+- **Two assertions in `site_test.go` were narrowed, with sign off.** Byte
+  identity with `report.css` became agreement on every shared token, so the
+  page still cannot call impeached green. The outright ban on script elements
+  became a ban on scripts from another host. Narrowed to the property that
+  matters rather than deleted.
+
+### Nine bugs, every one found by looking at the page
+
+This is the lesson the build keeps relearning, and the rebuild is its clearest
+run of evidence. Not one of these was found by reading the code.
+
+- **The shader did not compile at all**, and the page served its fallback
+  while looking entirely plausible. The inline script block puts a newline
+  before the source, so `#version` landed on line 2 and the whole thing
+  compiled as GLSL ES 1.00. Every other reported error was downstream of that
+  one. Compile and link failures now warn on the console: a fallback for the
+  visitor must not be silence for whoever is working on it.
+- **The DOM record was painted over the canvas** at full strength, which
+  defeats the concept. It is now visibility hidden while staying in the
+  layout, because the shader measures those elements to place the ink.
+- **The lamp was mirrored vertically** and the bleed rectangles were in the
+  wrong space. `gl_FragCoord.y` counts from the bottom while pointer input and
+  the Canvas2D texture are top down. Everything is top down by convention now
+  and only the uniform upload converts. It reads as a shader bug when it is a
+  coordinate bug.
+- **The verdict was invisible without JavaScript**, defaulting to opacity 0.
+  The landed state is now the CSS default and script opts into staging it, so
+  the most important word on the page does not depend on JS.
+- **The hatch was specified to sit under the ink**, which is impossible: the
+  ink is opaque and covers the bar. It sits on top with a lightened pattern,
+  which is what the report does for unverifiable rows, so the two surfaces
+  still agree on what "cannot be relied upon" looks like.
+- **The redaction's effect preceded its cause.** The state word and hatch were
+  applied as the sweep started, so the finished state showed for half a second
+  before the ink that supposedly caused it. They land at 460ms, just under the
+  sweep.
+- **The no WebGL fallback was illegible**, and this is the worst of the nine.
+  It masked the record to a cursor following circle at 18 percent opacity, so
+  the evidence was somewhere between unreadable and absent, and the mask
+  clipped both lines. The opacity could not be undone either, since a child
+  cannot raise its parent's opacity, which is what the code attempted. Gating
+  legibility on a moving light is incoherent on the one path with no light to
+  move. It now prints the record plainly in the record ink, with the
+  contradicting line red and underlined so colour is not carrying the meaning
+  alone, and the lamp survives as atmosphere behind the text.
+- **Reduced motion had the same flaw** in subtler form: the shader owned the
+  record, and a fixed lamp means a fixed cone, which clipped lines wider than
+  itself. Reduced motion must not cost the reader information, so a new
+  `uRecordOn` uniform drops the ink layer and the record becomes ordinary
+  selectable text over the paper.
+- **The hint was the third instance of the same mistake.** It read "Move the
+  light" on all three paths, including the two with no light to move. The
+  markup carries the honest static sentence and script upgrades it only after
+  the shader has actually compiled.
+
+The pattern across the last three is one mistake, not three: a visual effect
+was allowed to be the only carrier of information, so every path without the
+effect lost the information. Worth naming, because it will recur in whatever
+the next scene is.
+
+### The QA pass, and what it is honest about
+
+Recorded at step 6 and carried here from that commit rather than re-measured
+today. Lighthouse went from 93 performance and 96 accessibility to 99 and 100,
+with best practices and SEO at 100. Both accessibility failures were real
+contrast defects, and both were fixed without moving a shared token, since the
+page and the report are tested for agreeing on those:
+
+- The unverifiable word was `#8A8F98` on white, 3.24 to 1 at 15px bold. It is
+  now mixed 70 percent toward the ink while the hatch keeps the token exactly.
+  Mixing rather than hardcoding means dark mode moves it the other way without
+  a second rule.
+- Dark mode's impeached red was 4.45 to 1 where the verdict list needed 4.5.
+  It is `#DE5C57` at 4.84, and the shader's dark bleed constant moved with it,
+  so the ink under the paper and the ink on it stay one colour.
+
+Found by measuring every colour actually in use against its own font size,
+rather than by eye. Also: a 404 for a favicon nobody asked for, now an inline
+SVG data URI so the request is never made; deferring the one script took total
+blocking time to zero and main thread work to 0.4s; at 360px nothing overflows
+and the ledger reflows to two rows.
+
+**Two things step 6 could not verify and did not claim.** The macOS reduced
+motion and dark mode switches are system settings, so rather than flipping
+them the exact media query blocks were extracted from the shipped stylesheet
+and applied directly, with `matchMedia` patched so the script took the same
+branch. And the automation tool refuses `file://` URLs, so that path is
+verified structurally instead: every reference relative, no module scripts,
+and the shader inlined so the one fetch is never reached.
+
+The QA harnesses used for this (`qa-snap.js`, `qa-snap.html`, `qa-reduce.html`,
+`qa-nowebgl.html`) were scratch and were deleted rather than committed. They
+are reconstructable from the description above if the QA pass needs repeating.
+
+### Verified today, separately from the commit messages
+
+- `go test ./... -count=1` green, 327 tests, all nine packages.
+- The live page at <https://snowhiteohno.github.io/cli/> is byte identical to
+  the committed `impeach/site/index.html`, 20,909 bytes, diffed after fetching.
+  The drift gate reaches production.
+- The index, the sample report, the sample stylesheet and the sample JSON all
+  serve 200.
+
+### The one defect this leaves
+
+`internal/report/gen-site` still renders an `index.html` of its own from a Go
+template, so running it overwrites the hand written page with the older
+generated version. Nothing runs it and the Pages workflow publishes the
+committed directory rather than building it, so the site is not at risk, but
+it is a footgun aimed at the next person. `impeach/site/README.md` documents
+the safe subset to run in the meantime. The second half of the same fix: the
+hero's testimony and record lines are hardcoded in `index.html` to match
+`sample/impeach.json` and should be read from that file at build time. Both
+are now listed in `BUILDATHON.md` under what is genuinely open, which is where
+the audit that prompted this entry found five items that were already done.

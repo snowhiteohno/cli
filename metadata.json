@@ -1,0 +1,29 @@
+{
+  "cli_version": "0.10.6-nightly.202609050622.61dac01ed.0.20260905201708-3dbdf8b83c39+dirty",
+  "checkpoint_id": "01M1TX1WZ1E2YBZ6ZS27R8P97Z",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "impeach/site/hero.frag.glsl",
+    "impeach/site/index.html",
+    "impeach/site/site.js",
+    "impeach/site/style.css"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 2,
+    "cache_creation_tokens": 52188,
+    "cache_read_tokens": 16035,
+    "output_tokens": 178,
+    "api_call_count": 1
+  }
+}

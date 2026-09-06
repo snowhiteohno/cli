@@ -1,0 +1,59 @@
+{
+  "cli_version": "0.10.6-nightly.202609050622.61dac01ed.0.20260905201708-3dbdf8b83c39+dirty",
+  "checkpoint_id": "01M1TR5GCVA7ZE650KSRY2G35S",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "impeach/NOTES.md",
+    "impeach/cmd/entire-impeach/config.go",
+    "impeach/cmd/entire-impeach/main.go",
+    "impeach/cmd/entire-impeach/privacy_test.go",
+    "impeach/docs/PRD.md",
+    "impeach/fixtures/recorded/README.md",
+    "impeach/fixtures/recorded/redacted-toollog/0.json",
+    "impeach/fixtures/recorded/redacted-toollog/1.json",
+    "impeach/fixtures/recorded/redacted-toollog/10.json",
+    "impeach/fixtures/recorded/redacted-toollog/11.json",
+    "impeach/fixtures/recorded/redacted-toollog/12.json",
+    "impeach/fixtures/recorded/redacted-toollog/2.json",
+    "impeach/fixtures/recorded/redacted-toollog/3.json",
+    "impeach/fixtures/recorded/redacted-toollog/4.json",
+    "impeach/fixtures/recorded/redacted-toollog/5.json",
+    "impeach/fixtures/recorded/redacted-toollog/6.json",
+    "impeach/fixtures/recorded/redacted-toollog/7.json",
+    "impeach/fixtures/recorded/redacted-toollog/8.json",
+    "impeach/fixtures/recorded/redacted-toollog/9.json",
+    "impeach/fixtures/recorded/redacted-toollog/PROVENANCE.md",
+    "impeach/internal/report/html.go",
+    "impeach/internal/report/json.go",
+    "impeach/internal/report/report.css",
+    "impeach/internal/report/report.go",
+    "impeach/internal/report/report.html.tmpl",
+    "impeach/internal/report/table.go",
+    "impeach/internal/transcript/channels.go",
+    "impeach/internal/transcript/channels_test.go",
+    "impeach/internal/verify/execution.go",
+    "impeach/internal/verify/execution_test.go",
+    "impeach/internal/verify/reading.go",
+    "impeach/internal/verify/safety.go",
+    "impeach/internal/verify/structural.go",
+    "impeach/internal/verify/verdict.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 2,
+    "cache_creation_tokens": 52862,
+    "cache_read_tokens": 16035,
+    "output_tokens": 182,
+    "api_call_count": 1
+  }
+}

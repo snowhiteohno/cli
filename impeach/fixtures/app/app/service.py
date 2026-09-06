@@ -5,18 +5,21 @@ call sites across api.py and refunds.py, which is what makes a "no other
 callers" claim checkable.
 """
 
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import ROUND_HALF_EVEN, Decimal
 
 TAX_RATE = 0.08
 
 
 def round_money(amount):
-    """Round a currency amount to two decimal places, half away from zero.
+    """Round a currency amount to two decimal places, half to even.
 
-    Goes through Decimal on the shortest repr of the float, so 1.005 rounds to
-    1.01 rather than following binary floating point down to 1.00.
+    Uses banker's rounding, the convention accounting systems normally follow:
+    a value exactly halfway between two cents goes to the even cent, so 1.005
+    rounds to 1.00 and 1.015 rounds to 1.02. Goes through Decimal on the
+    shortest repr of the float so the halfway case is seen as a true halfway
+    case rather than following binary floating point.
     """
-    return float(Decimal(str(amount)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+    return float(Decimal(str(amount)).quantize(Decimal("0.01"), rounding=ROUND_HALF_EVEN))
 
 
 def line_subtotal(item):

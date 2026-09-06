@@ -1143,3 +1143,34 @@ The lesson is the same one this build keeps relearning, in a new place: the
 bug was not found by reading the scrubber, which looked obviously correct, but
 by running it twice and comparing. A scrubber that damages the output it is
 protecting is worse than no scrubber, and only a second run shows it.
+
+## The Pages workflow
+
+`.github/workflows/impeach-pages.yml`, a new file alongside the fourteen
+upstream workflows, none of which is touched. This is the fourth thing outside
+`impeach/`, after `BUILDATHON.md`, the README pointer and `.impeach.json`, and
+like those it was asked for.
+
+It publishes the committed `impeach/site` rather than building it in the
+runner, because generating the page needs a real audit, which needs the Entire
+CLI, the graph plugin and a checkpoint, none of which exist there.
+
+The interesting part is that it refuses to publish a drifted page. Before
+deploying it runs the site tests, then the whole suite offline. If someone
+hand-edits `impeach/site`, or changes the report's stylesheet without
+regenerating, the hero stops matching the sample report byte for byte and
+nothing ships. Verified by tampering with the hero and watching the check
+fail, then restoring it: a gate that has never been seen to fail is not known
+to be a gate.
+
+Two details worth keeping. The path filter includes
+`impeach/internal/report/**` as well as `impeach/site/**`, so a change to the
+report that was not regenerated triggers the check rather than sitting
+unnoticed until the next site edit. And the test steps use `-count=1`, because
+a cached pass is a claim about code that was not re-run, which this repository
+has already been bitten by once.
+
+Actions are enabled on the fork and the token carries the `workflow` scope, so
+the file pushes and runs. Pages itself is not yet configured: the site has no
+URL until the repository's Pages source is set to GitHub Actions, which is a
+publishing act on a public repository and was left for the owner to trigger.

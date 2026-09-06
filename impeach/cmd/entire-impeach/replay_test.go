@@ -44,9 +44,28 @@ func runReplay(t *testing.T, args ...string) (string, string, int) {
 	}
 	t.Setenv("ENTIRE_PLUGIN_DATA_DIR",
 		filepath.Join(home, ".local", "share", "entire", "plugins", "data", "impeach"))
+
+	// Hermetic: the scenarios were recorded with no setup command, and the
+	// repository these tests point at now commits one in .impeach.json.
+	// Passing --setup "" explicitly pins that, so a change to a committed
+	// config cannot silently change what these tests replay. Finding this
+	// coupling is why --setup exists as a flag at all.
+	if !hasFlag(args, "-setup") {
+		args = append([]string{"--setup", ""}, args...)
+	}
+
 	var out, errb bytes.Buffer
 	code := run(args, &out, &errb)
 	return out.String(), errb.String(), code
+}
+
+func hasFlag(args []string, name string) bool {
+	for _, a := range args {
+		if a == name || a == "-"+name {
+			return true
+		}
+	}
+	return false
 }
 
 // The demo checkpoint whose agent claim is contradicted by a fresh test run.

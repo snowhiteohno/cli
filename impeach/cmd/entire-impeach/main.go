@@ -68,6 +68,12 @@ type options struct {
 	// sensitive forbids anything leaving the machine. It is a refusal, not a
 	// preference: with it set, --model is rejected rather than ignored.
 	sensitive bool
+	// setup is the command run before the tests in each worktree. It can come
+	// from .impeach.json, so setupSet records whether the flag was given
+	// explicitly: passing --setup "" has to mean "no setup", which is
+	// different from not passing it at all and falling back to the file.
+	setup    string
+	setupSet bool
 }
 
 func main() {
@@ -113,6 +119,7 @@ func parseFlags(argv []string, stderr io.Writer) (*options, error) {
 	fs.SetOutput(stderr)
 
 	fs.StringVar(&opts.test, "test", "", `test command to rerun in the checkpoint worktree`)
+	fs.StringVar(&opts.setup, "setup", "", "command run before the tests in each worktree; its output never contributes test ids")
 	fs.BoolVar(&opts.session, "session", false, "audit every checkpoint in the session")
 	fs.StringVar(&opts.format, "format", "table", "output format: table, json or html")
 	fs.StringVar(&opts.out, "out", "", "directory to write the json and html reports to")
@@ -163,6 +170,14 @@ runs on your behalf is the one you pass to --test.
 		positional = append(positional, fs.Arg(0))
 		rest = fs.Args()[1:]
 	}
+	// Whether --setup was given explicitly, as opposed to left to
+	// .impeach.json. An explicit empty value means no setup at all.
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "setup" {
+			opts.setupSet = true
+		}
+	})
+
 	if len(positional) > 0 {
 		opts.ref = positional[0]
 	}
@@ -719,14 +734,20 @@ func buildRecord(ctx context.Context, run runner.Runner, repo string, res *check
 		}
 	}
 
-	test, setup := opts.test, ""
+	test, setup := opts.test, opts.setup
 	if cfg, cfgErr := loadConfig(repo); cfgErr != nil {
 		fmt.Fprintf(stderr, "entire-impeach: %v\n", cfgErr)
 	} else {
 		if test == "" {
 			test = cfg.Test
 		}
-		setup = cfg.Setup
+		// The flag wins when given, including when given as empty, so a
+		// committed setup command can always be turned off from the command
+		// line. Without this a config could silently change what a run does
+		// with no way to override it.
+		if !opts.setupSet {
+			setup = cfg.Setup
+		}
 	}
 
 	out.TestCommand = test

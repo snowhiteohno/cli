@@ -85,6 +85,8 @@ Rerun results are reported in a separate column (pass, new failures, not run) so
 entire impeach <checkpoint-id | commit-ish> [flags]
 
   --test CMD          test command to rerun in the checkpoint worktree (or from .impeach.json)
+  --setup CMD         command run before the tests in each worktree (or from .impeach.json);
+                      pass an empty value to override a committed one
   --session           audit every checkpoint in the session, one report section each
   --format table|json|html   default table; html and json also written with --out
   --out PATH          write json and html reports here

@@ -1,0 +1,5 @@
+{
+  "test": "cd impeach/fixtures/app && ./.venv/bin/python -m pytest -q --tb=no -rA",
+  "setup": "cd impeach/fixtures/app && { test -d .venv || { python3 -m venv .venv && ./.venv/bin/python -m pip install -q -r requirements.txt; }; }",
+  "sensitive": false
+}

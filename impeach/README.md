@@ -78,14 +78,22 @@ entire checkpoint list        # 8 checkpoints, or the audit has nothing to resol
 Without that fetch, `entire impeach` correctly reports that no commit carries
 the checkpoint, which is accurate and confusing at the same time.
 
-Then build the fixture app's virtualenv and audit the demo checkpoint:
+Then audit the demo checkpoint:
 
 ```
-cd impeach/fixtures/app && sh scripts/setup.sh && cd -
-
-entire impeach 01M1TET4N33VMY0DTHNZKV5HT9 --repo . --fail-on impeached \
-  --test 'cd impeach/fixtures/app && ./.venv/bin/python -m pytest -q --tb=no -rA'
+entire impeach 01M1TET4N33VMY0DTHNZKV5HT9 --repo . --fail-on impeached
 ```
+
+No `--test` is needed, because the repository commits one. `.impeach.json` at
+the root carries the test command and a `setup` command that builds the
+fixture virtualenv, which matters because `graph verify` runs in detached
+worktrees where the gitignored `.venv` does not exist.
+
+Both are overridable: `--test` replaces the command, and `--setup` replaces
+the setup step, including with an empty value to turn a committed one off.
+That override exists because a committed config that cannot be overridden
+silently changes what a run does, which was found when adding this file broke
+the offline replay tests.
 
 That prints the impeached row above and exits 2. What happened: a real
 captured agent session switched `round_money` to banker's rounding, ran only
@@ -97,8 +105,7 @@ still broken, which is the everyday case this tool is for.
 Add `--out ./impeach-out` for the JSON and the self-contained HTML report:
 
 ```
-entire impeach 01M1TET4N33VMY0DTHNZKV5HT9 --repo . --out ./impeach-out \
-  --test 'cd impeach/fixtures/app && ./.venv/bin/python -m pytest -q --tb=no -rA'
+entire impeach 01M1TET4N33VMY0DTHNZKV5HT9 --repo . --out ./impeach-out
 open ./impeach-out/impeach.html
 ```
 
@@ -108,14 +115,24 @@ reason is worth reading: that agent was accurate. It scoped every claim to the
 file it had actually run and volunteered which tests it had not. There was
 nothing to impeach.
 
-**Two flags matter more than they look.**
+**Three things matter more than they look.**
 
-`--tb=no -rA` is not cosmetic. `entire graph verify` needs per-test ids to
-adjudicate; with a bare `pytest -q` its parser does not engage, the rerun
-degrades to an exit code, and the report says so instead of claiming a pass.
+`--tb=no -rA` in the committed test command is not cosmetic. `entire graph
+verify` needs per-test ids to adjudicate; with a bare `pytest -q` its parser
+does not engage, the rerun degrades to an exit code, and the report says so
+instead of claiming a pass.
 
-`--fail-on impeached` is the CI contract. Exit 0 completed, 2 the condition was
-met, 1 a runtime error.
+`--fail-on` is the CI contract: `impeached`, `uncorroborated`, or `incomplete`
+to gate on evidence that was not intact. Exit 0 completed, 2 the condition was
+met, 1 a runtime error. There is no fourth exit code.
+
+`"sensitive": true` in `.impeach.json` makes the constraint a property of the
+repository rather than a flag someone has to remember. In that mode `--model`
+is refused with a non-zero exit and a message naming the command it refused,
+before any call is made. It is `false` here deliberately: this fork is public
+and its transcripts are published on purpose, so there is nothing to protect
+and refusing `--model` would only stop a reviewer trying it. Flip that one
+word, or pass `--sensitive`, in a repository where it matters.
 
 ### Reproduce with no Entire, no git and no agent
 
@@ -146,6 +163,15 @@ Reason codes on an impeachment: `stale`, `scope-mismatch`,
 The rerun is reported in its own column, independent of the verdict, because
 the verdict is about the testimony at commit time and the rerun is about the
 code now.
+
+Every run also reports a context ledger: each evidence channel and whether it
+was present, partial, redacted or absent. **Corroborated is reachable only
+from a channel that is present.** A partial or redacted channel can still
+impeach, because a contradiction from an intact channel survives redaction of
+another, but it can never corroborate: what was removed could be exactly what
+would have contradicted the claim. Such a verdict degrades to unverifiable
+with the channel named, carrying the reason code `channel-incomplete`. The
+asymmetry is deliberate. Absence of evidence is not evidence of honesty.
 
 ## Limitations
 

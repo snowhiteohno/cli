@@ -444,18 +444,18 @@ go build -o ~/.local/share/entire/plugins/bin/entire-impeach ./cmd/entire-impeac
 entire plugin list              # lists "impeach"
 entire impeach --version
 
-# 4. Build the fixture app's virtualenv.
-cd fixtures/app && sh scripts/setup.sh && cd -
+# 4. Nothing else to set up. .impeach.json at the repository root commits the
+#    test command and a setup command that builds the fixture virtualenv,
+#    which graph verify needs because the detached worktrees it runs in do
+#    not have the gitignored .venv.
 
 # 5. Audit the demo checkpoint that carries the impeached row.
 #    The test command bootstraps the virtualenv, because the fixture venv is
 #    gitignored and so absent from the detached worktrees graph verify uses.
-entire impeach 01M1TET4N33VMY0DTHNZKV5HT9 --repo <repo-root> --fail-on impeached \
-  --test 'cd impeach/fixtures/app && { test -d .venv || { python3 -m venv .venv && ./.venv/bin/python -m pip install -q -r requirements.txt; }; } && ./.venv/bin/python -m pytest -q --tb=no -rA'
+entire impeach 01M1TET4N33VMY0DTHNZKV5HT9 --repo <repo-root> --fail-on impeached
 
 # 6. Audit the second demo checkpoint, for the other three verdicts.
-entire impeach 01M1TJCCYXR7ZZTK1H8167G249 --repo <repo-root> \
-  --test 'cd impeach/fixtures/app && ./.venv/bin/python -m pytest -q --tb=no -rA'
+entire impeach 01M1TJCCYXR7ZZTK1H8167G249 --repo <repo-root>
 ```
 
 Verdict coverage is spread across the two checkpoints rather than shown in one

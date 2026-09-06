@@ -1036,3 +1036,34 @@ header. Verified by rendering the redacted report and looking at it.
 
 That is now the sixth defect in this build found by running or viewing the
 thing rather than reading it.
+
+### The root .impeach.json, and the gap adding it exposed
+
+Added `.impeach.json` at the repository root with the test command, a setup
+command that builds the fixture virtualenv, and `"sensitive": false`. The
+demo is now just `entire impeach 01M1TET4N33VMY0DTHNZKV5HT9 --repo .`, with no
+long `--test` string to copy.
+
+`sensitive` is false here on purpose. This fork is public and its transcripts
+are published deliberately, so there is nothing to protect, and setting it
+true would only stop a reviewer from trying `--model`. Both directions were
+checked end to end: with it false a model extractor runs and its claims are
+marked `execution (model)`; flipped true, `--model` is refused with a non-zero
+exit and the mode is stated in the header even when `--model` is absent.
+
+Adding the file broke two replay tests, and the reason was a real design gap
+rather than a test problem. `--test` could be overridden on the command line
+but `setup` could only come from the config, so a committed setup command
+changed the `graph verify` argv, missed the recorded calls, and silently
+turned the rerun into `skipped`. A committed config that cannot be overridden
+is a config that can silently change what a run does.
+
+Fixed by adding `--setup`, using `flag.Visit` so an explicitly empty value
+means "no setup" and is distinguishable from not passing the flag at all. The
+replay harness now pins `--setup ""`, which makes those tests hermetic against
+whatever the repository happens to commit. Recorded in `docs/PRD.md`.
+
+Worth noting how this was caught: `go test ./...` reported `ok (cached)` and
+would have gone on doing so. It only surfaced under `-count=1`. Cached test
+results are themselves a claim about code that has not been re-run, which is a
+fitting thing for this particular tool to have been bitten by.

@@ -243,8 +243,8 @@ Test-side verification at the same commit:
 ```
 go vet ./...        clean
 gofmt -l            clean
-go test ./...       285 tests, 8 packages, all pass
-go test -race ./... all 8 packages pass
+go test ./...       333 tests, 9 packages, all pass   (at 1bac7c70b)
+go test -race ./... all 9 packages pass
 pytest              22 passed, 3 failed
 ```
 
@@ -517,7 +517,7 @@ carries the same steps with more explanation.
 Tests:
 
 ```
-cd impeach && go test ./...                     # 285 tests, no network, no agent
+cd impeach && go test ./...                     # 333 tests, no network, no agent
 cd impeach/fixtures/app && ./.venv/bin/python -m pytest -q
 ```
 
@@ -529,6 +529,31 @@ phase 0 commit to see the green 18-test baseline.
 
 Exit codes: 0 completed, 2 the `--fail-on` condition was met, 1 a runtime
 error such as an unresolvable checkpoint.
+
+### The two red workflows on this fork, and why they are left red
+
+The repository page shows a failing check. Two of the six workflows on the tip
+fail, both inherited from the upstream repository this is a fork of, and
+neither runs a line of Impeach code:
+
+- **E2E Tests** needs `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` and
+  `OPENAI_API_KEY`. GitHub does not expose a repository's secrets to a fork,
+  so every agent leg starts with empty keys and fails at `Bootstrap agent`.
+  The one leg that needs no key, `e2e-tests (roger-roger)`, passes. The
+  `notify-slack` job then fails on top of it for a missing webhook, which is
+  the failure the log surfaces first and is not the cause.
+- **publish-git-remote-entire** calls `sts:AssumeRoleWithWebIdentity` against
+  an AWS role owned by the upstream organisation. A fork is not authorised for
+  that role, so it retries twelve times and gives up.
+
+Both are structurally impossible to pass here rather than broken, and both
+would also fail on an unmodified fork of the upstream repository with no
+Impeach in it at all. The four checks that do cover this work are green:
+**Tests**, **Lint**, **License Check** and **impeach pages**.
+
+They are deliberately left enabled rather than disabled on the fork. Turning
+them off would produce a green page by hiding two failures, which is the exact
+move this tool exists to catch, so they stay visible and explained instead.
 
 ## Known limitations and next steps
 

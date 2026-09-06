@@ -575,3 +575,36 @@ in markdown headings.
    `skipped`. The demo command builds the venv if missing; the plain
    `--test 'pytest -q --tb=no -rA'` form reports `skipped` honestly instead of
    claiming a pass.
+
+## Fork, push and mirror, resolved
+
+Risk 1 from the phase 6 stop is closed.
+
+- `gh` re-authenticated as `snowhiteohno` with a classic PAT. A fine-grained
+  PAT was tried first and returned HTTP 403 on the fork: fine-grained tokens
+  cannot fork a repository owned by someone else. Classic with `repo` scope
+  works for both the fork and the push.
+- Fork: <https://github.com/snowhiteohno/cli>, parent `entireio/cli`, public.
+- Remotes rearranged so nothing can reach upstream by accident: `origin` is
+  the fork and is pushable, `upstream` is `entireio/cli` with its push URL set
+  to `DISABLED-no-push`. The author identity stays repository-local and the
+  global company config is untouched.
+- `main` pushed, `3dbdf8b83..ab8ba0eee`.
+- Checkpoint sync re-enabled in `.entire/settings.local.json`, which is
+  gitignored. The pre-push hook then reported "Pushing 3 checkpoint ref(s) to
+  origin" and `entire status` stopped listing anything pending. Verified
+  against the remote with `git ls-remote origin 'refs/entire/*'`, which returns
+  exactly the three.
+- Mirror: `entire://aws-us-east-2.entire.io/gh/snowhiteohno/cli`, ID
+  `01M1TKHC7813MNVG5Y543V7P83`, status ready. `entire repo mirror create` took
+  a GitHub URL and registered server-side, so the feared requirement for an
+  `entire repo clone` never applied.
+
+Two notes worth keeping:
+
+- `entire repo mirror get` wants `<owner>/<repo>`, a mirror ULID or an
+  `entire://` clone URL. It rejects a `github.com/...` URL, which is the form
+  `mirror create` accepts. Easy to trip over.
+- The fork is public, so the checkpoint refs on it are public. That is Entire's
+  default storage behaviour, not an Impeach decision, and it is why the
+  committed fixtures are scrubbed of paths, user names and author identity.

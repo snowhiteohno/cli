@@ -186,15 +186,26 @@ pending
 
 ## Checkpoint links and what each checkpoint proves
 
-Fork URL: pending, see the note below.
-Mirror URL: pending.
+Fork: <https://github.com/snowhiteohno/cli>, forked from `entireio/cli`.
+Mirror: `entire://aws-us-east-2.entire.io/gh/snowhiteohno/cli`, mirror ID
+`01M1TKHC7813MNVG5Y543V7P83`, status ready. Clone it with
+`git clone entire://aws-us-east-2.entire.io/gh/snowhiteohno/cli`.
+
+Three checkpoints, all pushed to the fork as `refs/entire/checkpoints/**`:
+
+| Checkpoint | Commit | What it proves |
+|---|---|---|
+| `01M1TJWAR63MRKCP5AMZ2NQR9H` | `ab8ba0e` | Phase 6, the pre-noon checkpoint. All four verifiers and the unrequested detector, 224 tests. Its commit message records intent, architecture, what is done, what is not, and the five open risks. |
+| `01M1TJCCYXR7ZZTK1H8167G249` | `0bd3033` | Demo checkpoint two. A real captured session that added an order-level discount and renamed `line_subtotal`. Audited, it yields corroborated, uncorroborated and unverifiable rows plus three unrequested symbols. |
+| `01M1TET4N33VMY0DTHNZKV5HT9` | `458bb14` | Demo checkpoint one. A real captured session that switched `round_money` to banker's rounding while running only `tests/test_api.py`. Audited, it yields the impeached row, by `contradicted-rerun` against three genuine new failures. |
+
+Read any of them with `entire checkpoint explain <id>`, or audit one with
+`entire impeach <id>`.
 
 Commits on `main`, newest first:
 
 | Commit | Checkpoint | What it proves |
 |---|---|---|
-| phase 6 | see below | All four verifiers, the unrequested detector, 224 tests. |
-| `0bd3033` | `01M1TJCCYXR7ZZTK1H8167G249` | The second demo checkpoint. A real captured session that added an order-level discount and renamed `line_subtotal`. Produces corroborated, uncorroborated and unverifiable rows plus three unrequested symbols. |
 | phase 5 followup | none | The fixture README stopped being true and was corrected. |
 | phase 5 report | none | The stop-point report, written so a fresh session can reconstruct the build. |
 | phase 5 | none | Execution verifier, pattern extractor and table. First end-to-end path, 197 tests. |
@@ -205,14 +216,20 @@ Commits on `main`, newest first:
 | `458bb14` | `01M1TET4N33VMY0DTHNZKV5HT9` | The demo checkpoint. A real captured agent session that read two files, switched `round_money` to banker's rounding, ran only `tests/test_api.py`, and committed. This is the checkpoint Impeach audits. |
 | phase 0 | none | Docs, handoff and the fixture app with a green 18-test baseline. |
 
+The fork is public, which means the checkpoint refs on it are public too.
+That is a property of Entire's default storage rather than of Impeach, and it
+is the reason the committed fixtures are scrubbed of absolute paths, user
+names and author identity.
+
 An honest disclosure, since it is visible in the record and would be noticed
-anyway: **only one commit carries a checkpoint.** A fresh clone carries no git
+anyway: **only three commits carry checkpoints.** A fresh clone carries no git
 hooks, so Entire was enabled in settings but capturing nothing until
 `entire configure --force` installed them, which happened during phase 0.
 The session that wrote Impeach had already started by then, so its commits
-carry no `Entire-Checkpoint` trailer. The one checkpoint that exists is the
-probe session, which is the one that matters most for the demo, because it is
-the agent testimony being cross-examined.
+carry no `Entire-Checkpoint` trailer. The three that exist all come from `claude -p`
+subsessions, which are captured because they started after the hooks were
+installed. Two of them are the demo checkpoints being cross-examined, and the
+third is the pre-noon phase 6 checkpoint.
 
 The lesson is worth stating because it is the same class of failure Impeach
 exists to catch: the hooks were installed, they ran, and they silently did
@@ -238,10 +255,20 @@ entire impeach --version
 # 3. Build the fixture app's virtualenv.
 cd fixtures/app && sh scripts/setup.sh && cd -
 
-# 4. Audit the demo checkpoint.
+# 4. Audit the demo checkpoint that carries the impeached row.
+#    The test command bootstraps the virtualenv, because the fixture venv is
+#    gitignored and so absent from the detached worktrees graph verify uses.
 entire impeach 01M1TET4N33VMY0DTHNZKV5HT9 --repo <repo-root> --fail-on impeached \
+  --test 'cd impeach/fixtures/app && { test -d .venv || { python3 -m venv .venv && ./.venv/bin/python -m pip install -q -r requirements.txt; }; } && ./.venv/bin/python -m pytest -q --tb=no -rA'
+
+# 5. Audit the second demo checkpoint, for the other three verdicts.
+entire impeach 01M1TJCCYXR7ZZTK1H8167G249 --repo <repo-root> \
   --test 'cd impeach/fixtures/app && ./.venv/bin/python -m pytest -q --tb=no -rA'
 ```
+
+Verdict coverage is spread across the two checkpoints rather than shown in one
+table, and the reason is a finding rather than an omission. See the limitations
+below.
 
 Tests:
 
@@ -302,6 +329,18 @@ Other limitations, all disclosed in the report footer at runtime:
   is built on callees.
 - **The fixture app is seeded** to exercise each verdict, and the report footer
   says so.
+
+**The demo table has no impeached row on the second checkpoint, because the
+agent under audit was honest.** It scoped every claim to the file it actually
+ran, and volunteered that it had edited `tests/test_service.py` without
+running it. There was nothing to impeach. The first checkpoint does produce an
+impeached row, by `contradicted-rerun`, so all four verdicts plus unrequested
+are demonstrable across the two. Putting all five in one table needs either a
+seeded recorded scenario, which is what `fixtures/recorded/` was for in the
+cut phase seven, or an agent that overclaims, which cannot be arranged
+honestly by instructing one to lie. Stated plainly because it is the more
+interesting fact: this tool's headline row is hardest to produce exactly when
+the agent under audit is careful.
 
 Next steps:
 

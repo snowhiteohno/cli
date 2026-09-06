@@ -114,6 +114,10 @@ h2 { font-size: 22px; line-height: 1.25; }
   transform-origin: left;
 }
 
+/* Script stages the rule, so without it every rule is simply drawn. */
+.ruled.stage::after { transform: scaleX(0); }
+.ruled.drawn::after { transform: scaleX(1); transition: transform 300ms ease-out; }
+
 p { margin: 0 0 14px; max-width: var(--measure); }
 .lede { font-size: 15px; }
 .muted { color: var(--ink-2); }
@@ -313,7 +317,12 @@ pre {
     transform: rotate(-1.5deg) scale(1);
     transition: none;
   }
-  .ruled::after { transform: scaleX(1); transition: none; }
+  .ruled::after,
+  .ruled.stage::after,
+  .ruled.drawn::after { transform: scaleX(1); transition: none; }
+  .chan.sweeping .chan-bar::after { animation: none; transform: translateX(0); }
+  .term-line.pending { visibility: visible; }
+  .caret { display: none; animation: none; }
 }
 
 /* ------------------------------------------------------- context ledger */
@@ -361,8 +370,27 @@ pre {
   clip-path: polygon(0 0, 97% 0, 100% 34%, 98% 68%, 100% 100%, 0 100%);
 }
 
+@keyframes redact {
+  0%   { transform: translateX(-101%); clip-path: polygon(0 0, 97% 0, 100% 34%, 98% 68%, 100% 100%, 0 100%); }
+  45%  { clip-path: polygon(0 0, 99% 0, 96% 30%, 100% 62%, 97% 100%, 0 100%); }
+  100% { transform: translateX(0);     clip-path: polygon(0 0, 98% 0, 100% 38%, 96% 70%, 100% 100%, 0 100%); }
+}
+
+.chan.sweeping .chan-bar::after { animation: redact 500ms ease-in-out forwards; }
+
+/* Once the ink has landed the hatch sits on top of it, not under it, because
+   the ink is opaque and a hatch beneath it could never be seen. The pattern
+   lightens against ink, so it reads the same way the report's unverifiable
+   rows do: present, but not something you can rely on. */
 .chan.redacted .chan-bar { background: transparent; }
-.chan.redacted .chan-bar::before { opacity: 1; }
+.chan.redacted .chan-bar::before {
+  opacity: 1;
+  z-index: 2;
+  background-image: repeating-linear-gradient(
+    45deg, transparent, transparent 4px,
+    color-mix(in srgb, var(--paper) 26%, transparent) 4px,
+    color-mix(in srgb, var(--paper) 26%, transparent) 8px);
+}
 .chan.redacted .chan-bar::after { transform: translateX(0); }
 
 .chan-state { font-family: var(--mono); font-size: 13px; color: var(--ink-2); text-align: right; }
@@ -427,6 +455,23 @@ caption { text-align: left; color: var(--ink-2); font-size: 13px; padding-bottom
 th, td { text-align: left; padding: 9px 12px 9px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
 th { font-weight: 600; }
 tbody tr:hover { background: color-mix(in srgb, var(--rule) 30%, transparent); }
+
+/* -------------------------------------------------------------- terminal */
+
+.term-line { display: block; }
+.term-line.pending { visibility: hidden; }
+
+/* A caret that only exists while the first line is being typed. */
+.caret {
+  display: inline-block;
+  width: 0.6ch;
+  background: var(--ink);
+  animation: blink 1s steps(1) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+.v-word.corroborated { color: var(--corroborated); }
+.v-word.impeached { color: var(--bleed); font-weight: 700; }
 
 /* --------------------------------------------------------------- numbers */
 

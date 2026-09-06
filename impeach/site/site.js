@@ -332,6 +332,125 @@
     window.setTimeout(function () { landVerdict(0, 0); }, 6000);
   }
 
+  /* ------------------------------------------------------ section rules */
+
+  // Staged only when script is running, so a scriptless page simply has its
+  // rules drawn.
+  [].slice.call(document.querySelectorAll(".ruled")).forEach(function (h) {
+    if (reduce) { h.classList.add("drawn"); return; }
+    h.classList.add("stage");
+    onceInView(h, function () { h.classList.add("drawn"); });
+  });
+
+  /* ------------------------------------------------------ context ledger */
+
+  (function ledger() {
+    var section = document.getElementById("ledger-section");
+    var toolLog = document.querySelector('.chan[data-channel="tool-log"]');
+    var tally = document.getElementById("tally");
+    if (!section || !toolLog || !tally) return;
+
+    var state = toolLog.querySelector("[data-state]");
+
+    function settle() {
+      toolLog.classList.add("redacted");
+      if (state) state.textContent = "redacted";
+      tally.textContent = "1 corroborated";
+    }
+
+    if (reduce) { settle(); return; }
+
+    onceInView(section, function () {
+      // The bars start present. After a beat the tool log is redacted, and
+      // the count falls with it, because a redacted channel can no longer
+      // corroborate anything.
+      window.setTimeout(function () {
+        toolLog.classList.add("sweeping");
+
+        // The word and the hatch land with the ink, not before it, so the
+        // final state is never visible ahead of the sweep that causes it.
+        window.setTimeout(function () {
+          if (state) state.textContent = "redacted";
+          toolLog.classList.add("redacted");
+        }, 460);
+
+        var from = 3, to = 1, start = performance.now(), dur = 500;
+        (function tick(now) {
+          var t = Math.min(1, ((now || performance.now()) - start) / dur);
+          var n = Math.round(from + (to - from) * t);
+          tally.textContent = n + " corroborated";
+          if (t < 1) requestAnimationFrame(tick);
+        })(start);
+      }, 800);
+    });
+  })();
+
+  /* ------------------------------------------------------------ terminal */
+
+  (function terminal() {
+    var pre = document.getElementById("term");
+    var cmd = document.getElementById("term-cmd");
+    if (!pre || !cmd) return;
+
+    var rows = [].slice.call(pre.querySelectorAll(".term-line.pending"));
+
+    function settle() {
+      rows.forEach(function (r) { r.classList.remove("pending"); });
+    }
+    if (reduce) { settle(); return; }
+
+    var full = cmd.textContent;
+
+    onceInView(pre, function () {
+      // The command is typed by revealing its own text, so the line is never
+      // absent from the document and stays selectable throughout.
+      cmd.textContent = "";
+      var caret = document.createElement("span");
+      caret.className = "caret";
+      caret.textContent = " ";
+      cmd.appendChild(caret);
+
+      var i = 0;
+      var typer = window.setInterval(function () {
+        i++;
+        cmd.textContent = full.slice(0, i);
+        if (i < full.length) {
+          cmd.appendChild(caret);
+        } else {
+          window.clearInterval(typer);
+          // Then the table arrives a row at a time.
+          rows.forEach(function (r, n) {
+            window.setTimeout(function () { r.classList.remove("pending"); }, 140 * (n + 1));
+          });
+        }
+      }, 18);
+    });
+  })();
+
+  /* ------------------------------------------------------------- numbers */
+
+  (function figures() {
+    var wrap = document.getElementById("figures");
+    if (!wrap) return;
+    var nums = [].slice.call(wrap.querySelectorAll(".fig-n"));
+
+    if (reduce) return; // The final values are already in the markup.
+
+    onceInView(wrap, function () {
+      var start = performance.now(), dur = 900;
+      (function tick(now) {
+        var t = Math.min(1, ((now || performance.now()) - start) / dur);
+        // Ease out, so the count decelerates into its final value.
+        var e = 1 - Math.pow(1 - t, 3);
+        nums.forEach(function (el) {
+          var to = parseInt(el.getAttribute("data-to"), 10) || 0;
+          el.textContent = String(Math.round(to * e));
+        });
+        if (t < 1) requestAnimationFrame(tick);
+      })(start);
+    });
+  })();
+
   /* ---------------------------------------------------------------- boot */
 
   function boot(fragSource) {

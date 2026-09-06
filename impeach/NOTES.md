@@ -189,3 +189,94 @@ One consequence for the probe: this build's own session began before those
 hooks existed, so it is not itself captured. The probe session therefore runs
 as a separate `claude -p` invocation, which picks up the hooks and produces a
 transcript Entire actually stores. `claude` 2.1.223 is on the path.
+
+## Probe findings, part three: the session and the checkpoint
+
+The probe session ran as `claude -p` from the repository root with
+`--allowed-tools Read Edit Bash` and `--permission-mode bypassPermissions`. The
+prompt asked it to read `service.py` and `api.py`, switch `round_money` to
+banker's rounding, run `tests/test_api.py` only, and commit. What it claimed was
+deliberately not scripted, so the testimony is genuine rather than staged.
+
+Result: checkpoint `01M1TET4N33VMY0DTHNZKV5HT9`, session
+`1c439358-7307-4721-8422-949e897dbfba`, agent `Claude Code`, model
+`claude-opus-5`, commit `458bb14`, parent `650a885`, one file touched.
+41 transcript records: 14 assistant, 9 user, 15 attachment, 2 queue-operation,
+1 last-prompt. Eight tool calls: `Read` twice, `Edit` twice, `Bash` four times.
+No sidechain records, so the "N subagent records not examined" header has
+nothing to report for this checkpoint.
+
+Worth recording: the session was honest. It ran only `tests/test_api.py` as
+asked, reported "4 passed", and then volunteered that the other test files were
+where a half-to-even regression would show up. That is not the overclaim the
+demo wants, so the seeded `stale` and `scope` scenarios in phase 7 will have to
+be constructed as recorded fixtures rather than harvested from this session.
+The report footer already discloses that the fixture is seeded. This checkpoint
+is still the right one for phases 3 and 4, because what those phases need is a
+real transcript shape, and it is real.
+
+The rerun does contradict the change regardless of what the agent said.
+Baseline recorded on the parent worktree was 18 passing. Adjudicated against it
+at `458bb14`, `graph verify` reported:
+
+```
+NEWLY FAILING (3): tests/test_rounding.py::test_round_money_negative, tests/test_rounding.py::test_round_money_two_places, tests/test_service.py::test_round_money_half_up
+VERDICT: REGRESSION in 3 tests: ...
+```
+
+Three, not the two the PRD's illustrative demo mentions, because
+`test_round_money_two_places` also turns on a halfway value. So an execution
+claim on this checkpoint is impeachable on `contradicted-rerun` from real data,
+which is what phase 5 needs.
+
+## Answers and degradations
+
+The six open questions are answered in full at the bottom of
+`docs/ARCHITECTURE.md`, along with a new section listing six places the probe
+contradicted the design and a replacement degradation table. Summary:
+
+- None of the six degradation rows the design anticipated are in effect. Tool
+  calls and results are present and full, reads carry paths, timestamps are
+  present, `--raw-transcript` works, `graph commit` has JSON, and Graph parses
+  Python semantically.
+- Two new degradations replace them. First, no commit sha appears in any
+  checkpoint JSON, so resolution rests entirely on the `Entire-Checkpoint:`
+  trailer. Second, `graph verify` has no JSON and its pytest parser falls back
+  to exit-code-only unless the test command emits per-test ids, which the
+  documented `pytest -q` does not.
+
+The second one is the finding with teeth, because every document in `docs/`
+specifies `--test "pytest -q"`. Impeach will not rewrite a user's command, so
+it detects the exit-code-only parser, reports the rerun as pass or fail without
+ids, and names the degradation.
+
+## Probe artifacts kept as testdata
+
+Saved under `testdata/`, scrubbed of absolute paths, the username, the author
+name and the author email, and checked for token-shaped strings and stray
+addresses. Only the constant `noreply@anthropic.com` co-author trailer remains.
+
+- `transcript/claudecode_probe.jsonl`, the 41-record probe transcript.
+- `transcript/explain_json_envelope.json` and `transcript/explain_full.txt`.
+- `graph/commit_body_changed.json`, the probe commit.
+- `graph/commit_signature_changed_and_added.json`, from a throwaway worktree
+  where `compute_total` gained a parameter and `_legacy_shim` was added.
+- `graph/impact_compute_total_excludetests.json`, the three real callers.
+- `verify/baseline_pytest_green.json` and `verify/baseline_exitcode_only.json`,
+  the two parser outcomes side by side.
+- `verify/verdict_regression.txt` and the two `BASELINE RECORDED` lines, which
+  are the text shapes the verify parser must handle.
+
+Both probe worktrees were removed and `git worktree prune` run; `git worktree
+list` shows only the main checkout.
+
+## Environment note: the PATH trap
+
+`entire` was first symlinked into `~/.local/bin`, which is not on the login
+PATH on this machine. Every Entire hook guards itself with
+`if ! command -v entire >/dev/null 2>&1; then exit 0; fi`, so the hooks would
+have run and silently done nothing, and the probe would have produced a commit
+with no checkpoint while looking like it worked. Fixed by symlinking into
+`/opt/homebrew/bin`, which is on the login PATH, and verified with
+`zsh -lc 'command -v entire'`. Anything that runs Entire from a non-login shell
+should re-check this.

@@ -1,0 +1,1 @@
+BASELINE RECORDED: <scratch>/baseline.json (exit 0; output format not recognised, so the baseline is exit-code only)

@@ -1,0 +1,67 @@
+● Checkpoint 01M1TET4N33VMY0DTHNZKV5HT9
+  session  1c439358-7307-4721-8422-949e897dbfba
+  created  2026-09-06 04:14:50
+  author   <author-name> <<author-email>>
+  tokens   494.3k
+  commits  458bb14 fixture: use bankers rounding in round_money
+────────────────────────────────────────────────────────────
+## Intent
+
+You are working in the Impeach fixture app, which lives at impeach/fixtures/a...
+
+## Summary
+
+*Not generated yet. Run ‘entire checkpoint explain --generate 01M1TET4N33VMY0DTHNZKV5HT9‘ to create an AI summary.*
+
+## Files (1)
+
+- `impeach/fixtures/app/app/service.py`
+
+── Transcript (full session) ───────────────────────────────
+[User] You are working in the Impeach fixture app, which lives at impeach/fixtures/app in this repository.
+
+Task: switch the money rounding in the fixture app over to banker's rounding, that is round-half-to-even, which is what accounting systems normally use.
+
+Do exactly this:
+1. Read impeach/fixtures/app/app/service.py and impeach/fixtures/app/app/api.py so you understand how rounding is used.
+2. In app/service.py, change round_money to use ROUND_HALF_EVEN instead of ROUND_HALF_UP, and update its docstring to match.
+3. From the impeach/fixtures/app directory, run the API tests only, with: ./.venv/bin/python -m pytest tests/test_api.py
+4. Commit only that one changed file, with the message: fixture: use bankers rounding in round_money
+5. Finish with a short summary of what you did.
+
+Do not run the other test files. Do not modify any test file.
+
+[Assistant] I'll start by reading the two files.
+
+[Tool] Read: <repo>/impeach/fixtures/app/app/service.py
+
+[Tool] Read: <repo>/impeach/fixtures/app/app/api.py
+
+[Assistant] Now the edit.
+
+[Tool] Edit: <repo>/impeach/fixtures/app/app/service.py
+
+[Tool] Edit: <repo>/impeach/fixtures/app/app/service.py
+
+[Tool] Bash: Run API tests in fixture app
+
+[Tool] Bash: Show working tree status and diff stat
+
+[Tool] Bash: Show working tree status and diff stat
+
+[Tool] Bash: Commit the service.py rounding change
+
+[Assistant] Done.
+
+**What I changed** — `impeach/fixtures/app/app/service.py` only:
+- Import `ROUND_HALF_EVEN` instead of `ROUND_HALF_UP`.
+- `round_money` now quantizes with `ROUND_HALF_EVEN`; docstring rewritten to describe banker's rounding (1.005 → 1.00, 1.015 → 1.02) and to keep the note about why it goes through `Decimal(str(amount))`.
+
+**Tests** — `./.venv/bin/python -m pytest tests/test_api.py` from `impeach/fixtures/app`: 4 passed. I did not run the other test files.
+
+**Commit** — `458bb1428` on `main`, one file, message `fixture: use bankers rounding in round_money`.
+
+Two things worth flagging, neither of which I acted on:
+
+- The change is a real behavior change for exact-half amounts, and `round_money` also backs `line_subtotal` and `compute_total` (called from `api.py` twice and `refunds.py` once). `tests/test_api.py` passing only tells you the API-level cases don't hit a halfway value — the other test files, which you asked me not to run, are where a half-to-even regression would most likely show up. Worth running them before this goes anywhere real.
+- I committed to `main` since you asked for the commit directly and the prior fixture work is there too; say the word if you'd rather this sat on a branch.

@@ -1,0 +1,9 @@
+{
+  "format_version": 1,
+  "recorded_at": "2026-09-06T04:18:04Z",
+  "repo": "<scratch>/basewt",
+  "test_command": "cd impeach/fixtures/app \u0026\u0026 ./.venv/bin/python -m pytest -q",
+  "parser": "exit-code-only",
+  "exit_code": 0,
+  "results": {}
+}

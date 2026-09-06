@@ -1,0 +1,28 @@
+{
+  "format_version": 1,
+  "recorded_at": "2026-09-06T04:18:17Z",
+  "repo": "<scratch>/basewt",
+  "test_command": "cd impeach/fixtures/app \u0026\u0026 ./.venv/bin/python -m pytest -q --tb=no -rA",
+  "parser": "pytest",
+  "exit_code": 0,
+  "results": {
+    "tests/test_api.py::test_checkout_empty_payload": "pass",
+    "tests/test_api.py::test_checkout_returns_total_and_lines": "pass",
+    "tests/test_api.py::test_quote_empty": "pass",
+    "tests/test_api.py::test_quote_prices_a_basket": "pass",
+    "tests/test_refunds.py::test_parse_refund_keeps_reason": "pass",
+    "tests/test_refunds.py::test_parse_refund_normalises_record": "pass",
+    "tests/test_refunds.py::test_refund_amount_full": "pass",
+    "tests/test_refunds.py::test_refund_amount_with_restocking_fee": "pass",
+    "tests/test_rounding.py::test_round_money_already_rounded": "pass",
+    "tests/test_rounding.py::test_round_money_negative": "pass",
+    "tests/test_rounding.py::test_round_money_two_places": "pass",
+    "tests/test_rounding.py::test_round_money_zero": "pass",
+    "tests/test_service.py::test_compute_total_applies_tax": "pass",
+    "tests/test_service.py::test_compute_total_empty_basket": "pass",
+    "tests/test_service.py::test_compute_total_multiple_lines": "pass",
+    "tests/test_service.py::test_compute_total_zero_tax": "pass",
+    "tests/test_service.py::test_line_subtotal": "pass",
+    "tests/test_service.py::test_round_money_half_up": "pass"
+  }
+}

@@ -305,11 +305,134 @@ Every commit message states the phase number and the test count, so the checkpoi
 
 ## Open questions
 
-Fill these in after Step 0 and keep them current.
+Answered by the Step 0 probe on 2026-09-06, against Entire CLI
+`0.10.6-nightly.202609050622.61dac01ed` built from source at `3dbdf8b`, and
+entire-graph `v0.4.0`. Probe checkpoint `01M1TET4N33VMY0DTHNZKV5HT9`, commit
+`458bb14`, parent `650a885`.
 
-- Does `entire checkpoint list --json` expose the linked commit sha and session ids?
-- Does `entire checkpoint explain` have a machine-readable flag in the installed version, or is `--raw-transcript` the only structured path?
-- Do `tool_result` blocks in the stored transcript carry full command output, truncated output, or none?
-- Do `graph commit`, `graph impact` and `graph verify` have JSON output in the installed plugin version?
-- Does `graph commit` report signature changes distinctly from body changes for Python?
-- Is `ENTIRE_PLUGIN_DATA_DIR` set for unmanaged plugins, or only for managed installs?
+**Does `entire checkpoint list --json` expose the linked commit sha and session
+ids?** Session ids yes, commit sha no. `list --json` returns
+`checkpoint_id`, `session_id`, `session_ids[]`, `session_count`, `agent`,
+`date`, `message` and `is_logs_only`. `explain --json` adds `files_touched`,
+`strategy`, `branch` and a per-session block with `index`, `agent`, `model`,
+`created_at`, `turn_id`, `files_touched` and `token_usage`. Neither carries a
+commit sha. So the `Entire-Checkpoint:` trailer is the only checkpoint to
+commit link, which makes the trailer path primary rather than the fallback this
+document assumed. A second, weaker channel exists inside the transcript: a
+`Bash` result for a `git commit` carries
+`toolUseResult.gitOperation.commit.sha`, useful as a cross-check but only
+present when the agent committed in-session.
+
+**Does `entire checkpoint explain` have a machine-readable flag, or is
+`--raw-transcript` the only structured path?** More surface than assumed.
+`--json` gives a metadata-only envelope and never embeds transcript bytes.
+`--transcript` streams the stored JSONL and is byte-identical to
+`--raw-transcript`, confirmed with `cmp`. `--session-index N` selects a session
+inside a multi-session checkpoint, so the reader boundary must record which
+session it read. `--limit` caps the list view.
+
+**Do `tool_result` blocks carry full command output, truncated output, or
+none?** Full. The probe's `pytest` result arrived complete, summary line
+included. There are two channels per result: the `tool_result` block's
+`content`, and a top-level `toolUseResult` on the same record, which is an
+object of `stdout`, `stderr`, `interrupted`, `isImage` and `noOutputExpected`
+on success and a plain string on failure. Exit status is better than this
+document assumed: `is_error` is present on every result, and a failing result's
+content begins with an explicit `Exit code N` line. So `ExitKnown` can be true
+in both directions, `false` meaning success and `true` carrying a parsed code,
+rather than the pessimistic default the Testimony section describes.
+
+**Do `graph commit`, `graph impact` and `graph verify` have JSON output?**
+Three of four. `graph commit --json` yes, `graph diff --json` yes,
+`graph impact --format text|json` yes. `graph verify` has neither `--json` nor
+`--format`; its adjudicated verdict is text only and must be parsed. This
+inverts the plan: `commit` and `impact` need no text parsers, and `verify` is
+the one place a text parser is unavoidable.
+
+**Does `graph commit` report signature changes distinctly from body changes for
+Python?** Yes, and with more detail than needed. Observed change types are
+`body_changed`, `signature_changed` and `added`, each with `kind`, `name`,
+`before_start_line` / `after_start_line` and `dependents_count`.
+`signature_changed` also carries `old_signature` and `new_signature` as
+strings, so the safety verifier can quote the exact signature delta instead of
+inferring one. Verified by committing a signature change plus a new function in
+a throwaway worktree.
+
+**Is `ENTIRE_PLUGIN_DATA_DIR` set for unmanaged plugins, or only for managed
+installs?** Both. `runPlugin` in `cmd/entire/cli/plugin.go` sets it
+"regardless of where the binary lives so plugins installed via raw PATH and via
+`entire plugin install` get the same contract". Three consequences: the
+directory is not pre-created, so Impeach must `MkdirAll` on first use; the
+dispatcher also passes `ENTIRE_CLI_VERSION` and `ENTIRE_REPO_ROOT`, and the
+latter is worth preferring over asking git for the worktree root; and in an
+environment where the path cannot be resolved the dispatcher strips any
+inherited value rather than pass one it did not sanction, so an absent value
+means absent and a stray inherited value must not be trusted.
+
+## Probe findings that change the design
+
+Six things the probe contradicted or added. These are corrections to this
+document, not new decisions.
+
+1. **Checkpoint ids are 26-character ULIDs, not 12 hex characters.** The probe
+   id is `01M1TET4N33VMY0DTHNZKV5HT9`. The Resolve section's "12-hex checkpoint
+   ID" is wrong. Resolve accepts a full ULID or a prefix of one, and must not
+   assume hex, because Crockford base32 includes letters outside `a-f`.
+
+2. **`graph verify`'s pytest parser needs per-test ids in the output.** With
+   `pytest -q` or bare `pytest` it reports "output format not recognised, so
+   the baseline is exit-code only" and returns `"parser": "exit-code-only"`
+   with an empty `results` map. With `-v`, or `-q --tb=no -rA`, it returns
+   `"parser": "pytest"` and 18 individual results. This matters because the
+   PRD, this document and the demo all specify `--test "pytest -q"`, which
+   silently produces the coarsest possible rerun. Impeach must not rewrite the
+   user's command, per the security policy, so it detects the exit-code-only
+   parser and says so in the report, and the documentation recommends the
+   id-carrying form.
+
+3. **`graph verify` exits 0 even when it reports a regression.** The probe's
+   regression run printed `NEWLY FAILING (3)` and `VERDICT: REGRESSION in 3
+   tests` and still exited 0. The exit code carries no verdict; only the text
+   does.
+
+4. **Transcript record types are not the ones this document lists.** Observed
+   top-level `type` values are `user`, `assistant`, `attachment`,
+   `queue-operation` and `last-prompt`. There is no `system` or `summary`
+   record. Every `attachment` record in the probe was harness bookkeeping
+   (`hook_success`, `hook_system_message`, `total_tokens_reminder`,
+   `task_reminder`, `skill_listing`, `deferred_tools_delta`,
+   `agent_listing_delta`) and carried no file content, so the adapter ignores
+   `attachment` and `queue-operation` outright. Assistant content can also
+   include `thinking` blocks, which are not claims and are skipped.
+
+5. **`file_path` in `Read` and `Edit` inputs is absolute.** Graph reports
+   repository-relative paths. The adapter must relativize against the record's
+   `cwd`, or `ENTIRE_REPO_ROOT`, before any path can be compared with Graph
+   output or with `explain --json`'s `files_touched`.
+
+6. **`graph impact` callee resolution can cross languages.** Asked for
+   `compute_total` in the Python fixture, it listed the Python builtin `sum` as
+   resolving to `tools/complexity/dupl/main.go:193`, a Go function in the host
+   repository. Callers were correct and clean; only callees bled. The safety
+   verifier reads callers, so this does not affect a verdict, but it is a
+   limitation worth stating and a reason not to build anything on callees.
+
+Useful shapes confirmed for the record layer: `explain --json` exposes
+`files_touched`, which is a documented CLI source for the checkpoint's changed
+file list and removes the need to ask git for it in the execution verifier's
+step one. `graph impact --format json --exclude-tests` on `compute_total`
+returned exactly the three non-test callers, `checkout`, `quote` and
+`refund_amount`, each with a call site line, which is the safety scenario
+working end to end before a line of Impeach exists.
+
+## Degradations in effect
+
+None of the six rows in the Step 0 degradation table apply. Tool calls and
+results are both present and full, reads carry paths, timestamps are present,
+`--raw-transcript` works, `graph commit` has JSON, and Graph parses Python
+semantically. Two new degradations replace them:
+
+| Finding | Effect | Where absorbed |
+|---|---|---|
+| No commit sha in `checkpoint list --json` or `explain --json` | Checkpoint to commit resolution rests entirely on the `Entire-Checkpoint:` trailer via `git log --grep`. Ambiguity is reported, not guessed | Checkpoint reader |
+| `graph verify` has no JSON, and its pytest parser degrades to exit-code-only unless the test command emits per-test ids | The rerun column reports pass or fail with no test ids, and the report names the degradation and the command that caused it | Record layer, verify wrapper |

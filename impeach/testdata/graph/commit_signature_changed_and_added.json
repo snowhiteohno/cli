@@ -1,0 +1,31 @@
+{
+  "base": "458bb14287ec2e0dcd4b6c52a779c9213af5be52",
+  "head": "b4190652c66b5f869a949ed3ebf298fc8f863e8e",
+  "files": [
+    {
+      "path": "impeach/fixtures/app/app/service.py",
+      "status": "M",
+      "language": "Python",
+      "changes": [
+        {
+          "type": "signature_changed",
+          "kind": "function",
+          "name": "compute_total",
+          "old_signature": "def compute_total(items, tax_rate=TAX_RATE)",
+          "new_signature": "def compute_total(items, tax_rate=TAX_RATE, discount=0.0)",
+          "before_start_line": 30,
+          "after_start_line": 30,
+          "dependents_count": 8
+        },
+        {
+          "type": "added",
+          "kind": "function",
+          "name": "_legacy_shim",
+          "new_signature": "def _legacy_shim(items)",
+          "after_start_line": 39,
+          "dependents_count": 0
+        }
+      ]
+    }
+  ]
+}

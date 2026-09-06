@@ -1,0 +1,21 @@
+{
+  "base": "650a885fdf96dde7f230729ca19db0c8ea217f53",
+  "head": "458bb1428",
+  "files": [
+    {
+      "path": "impeach/fixtures/app/app/service.py",
+      "status": "M",
+      "language": "Python",
+      "changes": [
+        {
+          "type": "body_changed",
+          "kind": "function",
+          "name": "round_money",
+          "before_start_line": 13,
+          "after_start_line": 13,
+          "dependents_count": 8
+        }
+      ]
+    }
+  ]
+}

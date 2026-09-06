@@ -13,12 +13,14 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 
 	"github.com/entireio/cli/impeach/internal/checkpoint"
 	"github.com/entireio/cli/impeach/internal/record"
 	"github.com/entireio/cli/impeach/internal/runner"
+	"github.com/entireio/cli/impeach/internal/transcript"
 )
 
 // Version is the Impeach version, printed on every run so a reader knows which
@@ -181,6 +183,14 @@ func audit(ctx context.Context, opts *options, stdout, stderr *os.File) error {
 	if repo == "" {
 		repo = "."
 	}
+	// Absolute from here on. The adapter relativizes the absolute paths in
+	// tool inputs against this root, and a relative root cannot do that job.
+	// It also keeps the worktree key and Graph's --repo unambiguous.
+	abs, err := filepath.Abs(repo)
+	if err != nil {
+		return fmt.Errorf("resolve repository path %q: %w", repo, err)
+	}
+	repo = abs
 
 	log := &runner.Logged{Inner: runner.Exec{}}
 
@@ -207,7 +217,57 @@ func audit(ctx context.Context, opts *options, stdout, stderr *os.File) error {
 	}()
 
 	printHeader(stdout, res, wt, opts)
+
+	stream, err := readTestimony(ctx, resolver, res, repo, opts, stdout)
+	if err != nil {
+		// A missing or unreadable transcript is a state, not a failure: the
+		// record-side rows still run. Say so and carry on.
+		fmt.Fprintf(stdout, "Testimony unavailable (%v). Execution and reading claims will be unverifiable.\n", err)
+		return nil
+	}
+	printTestimony(stdout, stream)
 	return nil
+}
+
+// readTestimony fetches the transcript and parses it with the chosen adapter.
+func readTestimony(ctx context.Context, resolver *checkpoint.Resolver, res *checkpoint.Resolved,
+	repo string, opts *options, stdout *os.File) (*transcript.Stream, error) {
+	t, err := resolver.FetchTranscript(ctx, res.ID, -1)
+	if err != nil {
+		return nil, err
+	}
+
+	cc := transcript.ClaudeCode{RepoRoot: repo}
+	adapters := []transcript.Adapter{cc}
+
+	if opts.adapter == "auto" {
+		if _, err := transcript.Detect(t.Raw, adapters); err != nil {
+			return nil, err
+		}
+	}
+	return cc.ParseStream(t.Raw)
+}
+
+func printTestimony(stdout *os.File, s *transcript.Stream) {
+	ch := s.Channels()
+	fmt.Fprintf(stdout, "Testimony: %d events from adapter %s. Channels: commands %s, reads %s, edits %s, prompts %s.\n",
+		len(s.Events), s.Adapter, yesNo(ch.Commands), yesNo(ch.Reads), yesNo(ch.Edits), yesNo(ch.Prompts))
+	if s.SubagentRecords > 0 {
+		fmt.Fprintf(stdout, "%d subagent records not examined.\n", s.SubagentRecords)
+	}
+	if !s.TimestampsPresent() {
+		fmt.Fprintf(stdout, "This transcript carries no timestamps; ordering and the report use turn numbers.\n")
+	}
+	if edited := s.EditedPaths(); len(edited) > 0 {
+		fmt.Fprintf(stdout, "Files edited in the session: %s.\n", strings.Join(edited, ", "))
+	}
+}
+
+func yesNo(b bool) string {
+	if b {
+		return "yes"
+	}
+	return "no"
 }
 
 func printHeader(stdout *os.File, res *checkpoint.Resolved, wt *record.Worktrees, opts *options) {

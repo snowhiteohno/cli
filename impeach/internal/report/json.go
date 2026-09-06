@@ -20,12 +20,17 @@ type jsonReport struct {
 	// UnrequestedSkipped explains why row type five did not run, when it did
 	// not. Missing data is a state, and the JSON says so rather than showing
 	// an empty list that reads as "nothing found".
-	UnrequestedSkipped string     `json:"unrequested_skipped,omitempty"`
-	PromptTokens       []string   `json:"prompt_tokens_searched,omitempty"`
-	Counts             jsonCounts `json:"counts"`
-	Notes              []string   `json:"notes,omitempty"`
-	Limitations        []string   `json:"limitations"`
-	CommandsRun        []string   `json:"commands_run"`
+	UnrequestedSkipped string `json:"unrequested_skipped,omitempty"`
+	// PromptTokenCount is the size of the corpus the symbol tokens were
+	// searched in. The corpus itself is not published: the security policy
+	// keeps prompts out of reports as full text, and a full token list
+	// reconstructs the prompt almost verbatim. Each item carries the tokens
+	// that were actually searched for, which is what explains a failed match.
+	PromptTokenCount int        `json:"prompt_token_count,omitempty"`
+	Counts           jsonCounts `json:"counts"`
+	Notes            []string   `json:"notes,omitempty"`
+	Limitations      []string   `json:"limitations"`
+	CommandsRun      []string   `json:"commands_run"`
 }
 
 type jsonCheckpoint struct {
@@ -112,9 +117,13 @@ func ToJSON(r *Report) ([]byte, error) {
 			Uncorroborated: r.Counts.Uncorroborated, Unverifiable: r.Counts.Unverifiable,
 			Unrequested: r.Counts.Unrequested,
 		},
-		Notes:       r.Notes,
+		// Notes can carry a stderr excerpt and commands can carry a flag
+		// value, so both go through the scrub. Leaving commands_run
+		// unscrubbed leaked a credential into the JSON and into the copy the
+		// HTML report embeds.
+		Notes:       ScrubAll(r.Notes),
 		Limitations: r.Limitations,
-		CommandsRun: r.CommandsRun,
+		CommandsRun: ScrubAll(r.CommandsRun),
 	}
 	if out.Inputs.Channels == nil {
 		out.Inputs.Channels = map[string]bool{}
@@ -167,7 +176,7 @@ func ToJSON(r *Report) ([]byte, error) {
 		if r.Unrequested.Skipped {
 			out.UnrequestedSkipped = r.Unrequested.Reason
 		}
-		out.PromptTokens = r.Unrequested.PromptTokens
+		out.PromptTokenCount = len(r.Unrequested.PromptTokens)
 		for _, it := range r.Unrequested.Items {
 			out.Unrequested = append(out.Unrequested, jsonUnrequested{
 				Symbol: it.Symbol, File: it.File, Kind: string(it.Kind),

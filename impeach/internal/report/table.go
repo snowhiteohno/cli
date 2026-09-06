@@ -138,8 +138,22 @@ func writeUnrequested(w io.Writer, r *Report) {
 	for _, row := range rows {
 		writeRow(w, row, widths)
 	}
-	if len(un.PromptTokens) > 0 {
-		fmt.Fprintf(w, "  Prompt tokens searched: %s\n", joinCapped(un.PromptTokens, 30))
+	// What was searched for, and how large the corpus was. Not the corpus
+	// itself: the security policy keeps prompts out of reports as full text,
+	// and a full token list rebuilds the prompt almost verbatim.
+	var seen = map[string]bool{}
+	var tokens []string
+	for _, it := range un.Items {
+		for _, tok := range it.Tokens {
+			if !seen[tok] {
+				seen[tok] = true
+				tokens = append(tokens, tok)
+			}
+		}
+	}
+	if len(tokens) > 0 {
+		fmt.Fprintf(w, "  Searched %d prompt tokens for: %s\n",
+			len(un.PromptTokens), strings.Join(tokens, ", "))
 	}
 }
 

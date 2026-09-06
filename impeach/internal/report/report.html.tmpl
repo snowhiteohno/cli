@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:">
+<title>Impeach report for checkpoint {{.Checkpoint.ID}}</title>
+<style>{{.CSS}}</style>
+</head>
+<body>
+<main>
+
+<section>
+  <h1>Impeach {{.Version}} report</h1>
+  <p class="meta">Checkpoint {{.Checkpoint.ID}} (commit {{.ShortCommit}}, parent {{.ShortParent}}){{if .SessionLine}}, {{.SessionLine}}{{end}}, agent {{.Agent}}.</p>
+  <p class="meta">Adapter {{.Inputs.Adapter}}. Extractors: {{.ExtractorList}}. Test command: {{.TestCommand}}. Rerun: {{.RerunWord}}. Model command: {{.ModelCommand}}.</p>
+  {{if .Checkpoint.IsMerge}}<p class="meta">This is a merge commit; the diff is against the first parent.</p>{{end}}
+  {{range .Notes}}<p class="meta">{{.}}</p>{{end}}
+</section>
+
+<section>
+  <h2>Lead impeachment</h2>
+  {{with .Lead}}
+    <p class="label">Testimony</p>
+    <p class="testimony">&ldquo;{{.Text}}&rdquo; <span class="turn">turn {{.Turn}}</span></p>
+    <p class="label">Record</p>
+    <ol class="record">
+      {{range .Evidence}}
+        <li>{{.Label}} <span class="mono">{{.Text}}</span>{{if .Detail}} &rarr; {{.Detail}}{{end}}</li>
+      {{end}}
+    </ol>
+    <p class="verdict-line"><span class="v-impeached">Impeached</span>{{if .ReasonPhrases}}: {{.ReasonPhrases}}{{end}}.</p>
+  {{else}}
+    <p>No claim was impeached.</p>
+  {{end}}
+</section>
+
+<section>
+  <h2>Summary</h2>
+  <p class="strip">
+    <button type="button" class="f-corroborated" data-verdict="corroborated" aria-pressed="false">{{.Counts.Corroborated}} corroborated</button>
+    <button type="button" class="f-impeached" data-verdict="impeached" aria-pressed="false">{{.Counts.Impeached}} impeached</button>
+    <button type="button" class="f-uncorroborated" data-verdict="uncorroborated" aria-pressed="false">{{.Counts.Uncorroborated}} uncorroborated</button>
+    <button type="button" class="f-unverifiable" data-verdict="unverifiable" aria-pressed="false">{{.Counts.Unverifiable}} unverifiable</button>
+    <span>{{.Counts.Unrequested}} unrequested</span>
+    <button type="button" id="show-all" hidden>show all</button>
+  </p>
+</section>
+
+<section>
+  <h2>Claims</h2>
+  {{if .Rows}}
+    <p class="controls" id="controls" hidden>
+      <button type="button" id="expand-all">expand all</button>
+      <button type="button" id="collapse-all">collapse all</button>
+    </p>
+    <p class="tokens">Claims extracted from the agent&rsquo;s transcript and their verdicts. Each row expands to the evidence behind it.</p>
+    <div class="rows">
+      <div class="colhead" aria-hidden="true">
+        <span>Verdict</span><span>Family</span><span>Claim</span>
+        <span>Reason</span><span>Rerun</span><span>Turn</span>
+      </div>
+      {{range .Rows}}
+        <details class="row{{if .IsUnverifiable}} hatched{{end}}" data-verdict="{{.Status}}" open>
+          <summary>
+            <span class="v-{{.Status}}">{{.Status}}</span>
+            <span class="family">{{.Family}}</span>
+            <span class="claim">{{.Text}}</span>
+            <span class="reason">{{.ReasonPhrases}}</span>
+            <span class="rerun">{{.RerunLabel}}</span>
+            <span class="turncell">turn {{.Turn}}</span>
+          </summary>
+          <div class="evidence e-{{.Status}}">
+            {{if .Summary}}<p>{{.Summary}}</p>{{end}}
+            {{if .Evidence}}
+              <ul>
+                {{range .Evidence}}
+                  <li>
+                    <span class="etype">{{.Label}}</span>
+                    <span class="mono">{{.Text}}</span>
+                    {{if .Detail}}<span class="etype">({{.Detail}})</span>{{end}}
+                    {{if .Excerpt}}<pre>{{.Excerpt}}</pre>{{end}}
+                    {{if .Command}}<div class="etype">Run this to see the same evidence:</div><pre>{{.Command}}</pre>{{end}}
+                  </li>
+                {{end}}
+              </ul>
+            {{else}}
+              <p class="etype">No evidence was available for this claim.</p>
+            {{end}}
+          </div>
+        </details>
+      {{end}}
+    </div>
+  {{else}}
+    <p>No claims matched the pattern library. Run with <span class="mono">--model CMD</span> to add an extractor, or read the transcript with <span class="mono">entire checkpoint explain {{.Checkpoint.ID}} --full</span>.</p>
+  {{end}}
+</section>
+
+<section>
+  <h2>Unrequested changes</h2>
+  {{if .UnrequestedSkipped}}
+    <p>Not checked: {{.UnrequestedSkipped}}.</p>
+  {{else if .Unrequested}}
+    <div class="scroll">
+      <table>
+        <caption>Added or signature-changed symbols that no prompt asked for.</caption>
+        <thead>
+          <tr>
+            <th scope="col">Symbol</th><th scope="col">File</th><th scope="col">Kind</th>
+            <th scope="col">Dependents</th><th scope="col">Severity</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Unrequested}}
+            <tr>
+              <td class="mono">{{.Symbol}}</td>
+              <td class="mono">{{.File}}</td>
+              <td>{{.Kind}}</td>
+              <td>{{.Dependents}}</td>
+              <td>{{.Severity}}{{if .IsTest}} (test){{end}}</td>
+            </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{if .PromptTokens}}<p class="tokens">{{.PromptTokens}}</p>{{end}}
+  {{else}}
+    <p>Every added or signature-changed symbol was named in a prompt.</p>
+  {{end}}
+</section>
+
+<footer>
+  {{range .Limitations}}<p>{{.}}</p>{{end}}
+  {{if .CommandsRun}}
+    <p>Commands run, so any line above can be reproduced without trusting this report:</p>
+    <div class="scroll"><pre>{{range .CommandsRun}}{{.}}
+{{end}}</pre></div>
+  {{end}}
+  <p>Report generated by entire impeach; nothing in this file was produced by a model unless the header names a model command.</p>
+</footer>
+
+</main>
+
+<script type="application/json" id="impeach-data">{{.EmbeddedJSON}}</script>
+<script>{{.JS}}</script>
+</body>
+</html>

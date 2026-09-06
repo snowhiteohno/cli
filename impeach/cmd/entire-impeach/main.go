@@ -305,15 +305,27 @@ func emit(rep *report.Report, opts *options, stdout io.Writer) error {
 	if err := os.MkdirAll(opts.out, 0o755); err != nil {
 		return fmt.Errorf("create --out directory %s: %w", opts.out, err)
 	}
-	path := filepath.Join(opts.out, "impeach.json")
+	jsonPath := filepath.Join(opts.out, "impeach.json")
 	blob, err := report.ToJSON(rep)
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(path, blob, 0o644); err != nil {
-		return fmt.Errorf("write %s: %w", path, err)
+	if err := os.WriteFile(jsonPath, blob, 0o644); err != nil {
+		return fmt.Errorf("write %s: %w", jsonPath, err)
 	}
-	fmt.Fprintf(stdout, "\nWrote %s\n", path)
+
+	// The HTML report sits next to the JSON, and embeds it, so a reader can
+	// copy the data straight out of the page.
+	htmlPath := filepath.Join(opts.out, "impeach.html")
+	page, err := report.HTML(rep)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(htmlPath, page, 0o644); err != nil {
+		return fmt.Errorf("write %s: %w", htmlPath, err)
+	}
+
+	fmt.Fprintf(stdout, "\nWrote %s\nWrote %s\n", jsonPath, htmlPath)
 	return nil
 }
 

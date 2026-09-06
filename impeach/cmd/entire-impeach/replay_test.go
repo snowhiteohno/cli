@@ -132,7 +132,8 @@ func TestReplayDiscountRenameProducesTheOtherVerdicts(t *testing.T) {
 		"uncorroborated",
 		"unverifiable",
 		"Unrequested changes",
-		"Prompt tokens searched",
+		// The corpus is reported as a count, never reproduced.
+		"prompt tokens for:",
 	} {
 		if !strings.Contains(stdout, want) {
 			t.Errorf("output missing %q\n---\n%s", want, stdout)

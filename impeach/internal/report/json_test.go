@@ -156,8 +156,14 @@ func TestJSONUnrequestedBlock(t *testing.T) {
 	if _, ok := it["tokens_searched"]; !ok {
 		t.Errorf("item missing tokens_searched: %+v", it)
 	}
-	if _, ok := got["prompt_tokens_searched"]; !ok {
-		t.Error("missing prompt_tokens_searched")
+	// The corpus is reported as a count, not a list. Publishing the whole
+	// token list reconstructs the prompt almost verbatim, and the security
+	// policy keeps prompts out of reports as full text.
+	if got["prompt_token_count"].(float64) != 2 {
+		t.Errorf("prompt_token_count = %v, want 2", got["prompt_token_count"])
+	}
+	if _, ok := got["prompt_tokens_searched"]; ok {
+		t.Error("the prompt corpus must not be published")
 	}
 	if got["counts"].(map[string]any)["unrequested"].(float64) != 1 {
 		t.Errorf("counts.unrequested = %v, want 1", got["counts"])

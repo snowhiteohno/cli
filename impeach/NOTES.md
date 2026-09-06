@@ -733,3 +733,52 @@ a missing channel and missing data is a state.
 Only `claude-code` exists. A second agent is one entry here and nothing else,
 which is the claim the four-boundary design has been making all along and is
 now the smallest it will ever be to test.
+
+## Final graph diff review
+
+`entire graph diff --base 3dbdf8b --head HEAD --json --max-seconds 0`, the
+reviewable half of phase 11. The self-audit half stays cut: the build session
+predates the hooks, so Impeach cannot resolve a checkpoint for its own
+construction.
+
+Result: 122 files touched, 115 parsed, 1392 entity changes, and every single
+one is `added`. No removals, renames, signature changes or body changes, so
+the build is purely additive with respect to the fork.
+
+Checked against git rather than believed:
+
+- git: one pre-existing file modified, `README.md`, 4 insertions, 0 deletions.
+  Everything else is `A`.
+- graph: that same file as status `M` with one change, `added section
+  'Impeach'`.
+
+The 7 unparsed files (`impeach/go.mod`, the HTML template, 5 testdata
+fixtures) match the 7 `W_UNSUPPORTED_FILE` warnings exactly, and 122 minus 115
+is 7, so the warnings account for the whole gap. Graph reports what it could
+not read instead of reporting it as empty, which is the same contract Impeach
+offers its own users. One consequence worth stating: Graph cannot parse
+`report.html.tmpl`, so a structural claim about the HTML report would be
+`unverifiable` under Impeach's own rules.
+
+Symbol counts cross-checked against the source, and both deltas resolve in
+Graph's favour:
+
+- functions 392 against 392, exact.
+- methods 93 against 85 from `grep '^func ('`. The 8 missing are the method
+  declarations inside the four boundary interfaces: `Runner.Run`,
+  `Adapter.Name`/`Detect`/`Parse`, `Extractor.Name`/`Extract`,
+  `Verifier.Family`/`Verify`. A line-anchored grep cannot see interface
+  methods. Graph's method count exceeds the naive count by exactly the size of
+  the architecture's interface surface, which is a pleasing way to be wrong.
+- types 84 against 83. The extra is `pending`, declared inside a function in
+  the Claude Code adapter and therefore indented past `^type`.
+
+Test side at the same commit: `go vet` clean, `gofmt` clean, 285 tests across
+8 packages, all passing under `-race`, and pytest at 22 passed with the 3
+documented seeded failures.
+
+Written into `BUILDATHON.md` under the Graph findings section, with a note on
+what the review does not prove: it shows the build added what it claims and
+disturbed nothing else, and says nothing about verdict correctness on
+transcripts nobody has written yet. The four false positives found in phases
+5, 6 and 8 are the evidence that reading the code is not how those get caught.

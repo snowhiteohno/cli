@@ -180,6 +180,80 @@ directory question, which located `runPlugin` in
 was then confirmed empirically when installing Impeach as a managed plugin
 moved its worktrees into `ENTIRE_PLUGIN_DATA_DIR` with no code change.
 
+### Final review: the whole build, cross-examined
+
+The last thing built was a review of everything built, using the tool's own
+evidence source. `entire graph diff --base 3dbdf8b --head HEAD --json` across
+the 17 commits from the fork point, with its conclusions then checked against
+git and against the test suite rather than taken on trust. That check is the
+point: a structural claim from Graph is testimony too.
+
+Scale: 122 files touched, 115 of them parsed, 1392 entity changes.
+
+**Every one of the 1392 changes is `added`.** Not one `removed`, `renamed`,
+`signature_changed` or `body_changed`. So the build is purely additive with
+respect to the fork, which is the strongest single statement available about
+whether a plugin built inside someone else's repository disturbed it.
+
+Two independent sources agree on that:
+
+- git reports exactly one pre-existing file modified, `README.md`, with 4
+  insertions and 0 deletions. Every other path is `A`.
+- Graph reports the same file as status `M` carrying a single change, `added
+  section 'Impeach'`.
+
+The 7 files Graph did not parse are `impeach/go.mod`, the HTML template, and 5
+recorded testdata fixtures (`.jsonl` and `.txt`). They match the 7
+`W_UNSUPPORTED_FILE` warnings exactly, and 122 minus 115 is 7, so the warning
+list accounts for the entire gap. Nothing was silently dropped. That
+symmetry is worth naming, because it is the same contract Impeach offers its
+own users: a channel that cannot be read is reported as unreadable rather than
+reported as empty. Graph cannot see inside `report.html.tmpl`, so a structural
+claim about the HTML report would be `unverifiable` by Impeach's own rules.
+
+Graph's symbol counts were then checked against the source:
+
+| Entity | Graph | Counted from source | Delta |
+|---|---|---|---|
+| Go functions | 392 | 392 | 0 |
+| Go methods | 93 | 85 | +8 |
+| Go types | 84 | 83 | +1 |
+
+Both deltas resolve in Graph's favour, and the explanations are exact.
+
+The 8 extra methods are the 8 method declarations inside interfaces:
+`Verifier.Family` and `Verifier.Verify`, `Runner.Run`, `Adapter.Name`,
+`Adapter.Detect` and `Adapter.Parse`, `Extractor.Name` and `Extractor.Extract`.
+A `grep '^func ('` cannot see them because they are not function
+declarations. Those 8 are precisely the four boundaries this design rests on,
+so Graph's method count exceeds a naive grep by exactly the size of the
+architecture's interface surface. The extra type is `pending`, declared inside
+a function in the Claude Code adapter and therefore indented past a
+line-anchored grep. In both cases the tool was more complete than the
+hand-rolled check, which is the useful direction for that to fail in.
+
+Test-side verification at the same commit:
+
+```
+go vet ./...        clean
+gofmt -l            clean
+go test ./...       285 tests, 8 packages, all pass
+go test -race ./... all 8 packages pass
+pytest              22 passed, 3 failed
+```
+
+The 3 pytest failures are the fixture's documented seeded failures, from the
+banker's rounding change the demo checkpoint audits. The fixture README states
+which three and why. A green fixture would mean the demo had nothing to find.
+
+What this review does not prove. It is a structural and behavioural check, not
+a correctness proof: it says the build added what it says it added, disturbed
+nothing else, and passes its own tests under the race detector. It says
+nothing about whether the verifiers reach the right verdict on transcripts
+nobody has written yet, and the four false positives found during phases 5, 6
+and 8 are the honest evidence that reading the code is not how those get
+caught.
+
 ## Noon Curveball: what changed and how we adapted
 
 pending

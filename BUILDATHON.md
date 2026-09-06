@@ -473,7 +473,15 @@ calls unless `--model` is passed.
 git clone https://github.com/snowhiteohno/cli.git
 cd cli
 git fetch origin 'refs/entire/*:refs/entire/*'
-entire checkpoint list          # 8 checkpoints
+
+# Then confirm the two demo checkpoints resolve. Prefer this over a count:
+# `entire checkpoint list` reports this fork's checkpoints AND the upstream
+# repository's, which a fork inherits, and it hydrates more refs from the
+# remote as it runs, so the total moves between invocations. It also warns
+# that some remote checkpoints have no local session metadata; those are
+# upstream's and are harmless here. What matters is that these two resolve:
+entire checkpoint explain 01M1TET4N33VMY0DTHNZKV5HT9 --no-pager | head -6
+entire checkpoint explain 01M1TJCCYXR7ZZTK1H8167G249 --no-pager | head -6
 
 # 2. Build the plugin into the managed directory, which the CLI prepends to
 #    PATH at startup. `entire plugin install ./entire-impeach` also works but

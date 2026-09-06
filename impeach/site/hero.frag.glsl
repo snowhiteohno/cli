@@ -18,6 +18,10 @@ uniform vec4  uBleed[4];     // xy = min, zw = max, in UV space
 uniform int   uBleedCount;
 uniform float uDark;         // 0 light scheme, 1 dark
 uniform sampler2D uRecordTex;
+// 0 hands the record back to the DOM. Under reduced motion the lamp is fixed,
+// and a fixed cone clips lines wider than itself, so the shader must not be
+// the only place the evidence exists.
+uniform float uRecordOn;
 
 out vec4 outColor;
 
@@ -138,7 +142,7 @@ void main() {
   }
 
   vec3 bleedLight = vec3(0.549, 0.114, 0.094); // --bleed #8C1D18
-  vec3 bleedDark  = vec3(0.851, 0.325, 0.310); // #D9534F
+  vec3 bleedDark  = vec3(0.871, 0.361, 0.341); // --bleed dark #DE5C57
   vec3 bleedCol   = mix(bleedLight, bleedDark, uDark);
 
   // A slow pulse, so the contradiction looks wet rather than printed.
@@ -150,7 +154,7 @@ void main() {
   // ordinary light. The bleed reaches full strength where the light lands.
   inkAlpha *= mix(lamp * 0.92, min(1.0, lamp * 1.35), bleedMask);
 
-  vec3 col = mix(paper, inkCol, clamp(inkAlpha, 0.0, 1.0));
+  vec3 col = mix(paper, inkCol, clamp(inkAlpha * uRecordOn, 0.0, 1.0));
 
   outColor = vec4(col, 1.0);
 }

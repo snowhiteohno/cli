@@ -63,7 +63,11 @@
        dark room, which is the correct reading. */
     --lamp: #FFF4DC;
     --record-ink: #8FB0E0;
-    --bleed: #D9534F;
+    /* Lightened from the report's #D9534F. That value is 4.45 to 1 on this
+       background, and the impeached word appears at 15px bold in the verdict
+       list, where AA wants 4.5. This is 4.84. The report keeps its own value
+       because its impeached red sits on rows, not on this page's stock. */
+    --bleed: #DE5C57;
   }
 }
 
@@ -421,6 +425,13 @@ pre {
 .verdicts { display: grid; grid-template-columns: 1fr 1fr; gap: 22px 32px; margin: 0 0 18px; max-width: var(--col); }
 @media (max-width: 720px) { .verdicts { grid-template-columns: 1fr; } }
 
+/* The staged verdict is scaled up before it lands, which at narrow widths
+   pushed it a couple of pixels past the viewport. It rotates but does not
+   grow here, so nothing ever pokes off the edge of a phone screen. */
+@media (max-width: 720px) {
+  .verdict.staged { transform: rotate(-3deg) scale(1); }
+}
+
 .verdicts dt {
   font-family: var(--mono);
   font-weight: 700;
@@ -435,7 +446,12 @@ pre {
 .v-corroborated { color: var(--corroborated); }
 .v-impeached { color: var(--bleed); }
 .v-uncorroborated { color: var(--uncorroborated); }
-.v-unverifiable { color: var(--unverifiable); }
+/* The token itself has to keep the report's value, because the two surfaces
+   are tested for agreeing on it. But #8A8F98 on white is 3.24 to 1, and this
+   word is 15px bold, so the word is darkened toward the ink while the hatch
+   below keeps the token exactly. Mixing rather than hardcoding means dark
+   mode moves it the other way, toward its lighter ink, on its own. */
+.v-unverifiable { color: color-mix(in srgb, var(--unverifiable) 70%, var(--ink)); }
 
 /* Colour never carries meaning alone. Unverifiable gets the hatch too. */
 .hatch-swatch {
@@ -522,12 +538,18 @@ footer p { color: var(--ink-2); }
 .hero.webgl .record { visibility: hidden; }
 .hero.webgl .record li { visibility: hidden; }
 
+/* Except under reduced motion, where the lamp is fixed and the shader has
+   given the record back. Same treatment as the no-WebGL path. */
+.hero.webgl.static-record .record,
+.hero.webgl.static-record .record li { visibility: visible; }
+
 /* --------------------------------------------------- no-webgl fallback */
 
 /* A lesser version of the same idea, not a different page. Paper from an
    inline SVG turbulence filter, the lamp as a radial mask over the record,
    the bleed lines still red, and the stamp still lands. */
 .hero.no-webgl canvas { display: none; }
+.hero.no-webgl .hero-inner { position: relative; z-index: 1; }
 
 .hero.no-webgl {
   --lx: 50%;
@@ -542,6 +564,7 @@ footer p { color: var(--ink-2); }
   position: absolute;
   inset: 0;
   pointer-events: none;
+  z-index: 0;
   background: radial-gradient(
     circle 22vmin at var(--lx) var(--ly),
     color-mix(in srgb, var(--lamp) 85%, transparent) 0%,
@@ -549,20 +572,24 @@ footer p { color: var(--ink-2); }
     transparent 72%);
 }
 
-/* The record is real text, revealed only under the lamp. */
-.hero.no-webgl .record {
-  opacity: 0.18;
-  -webkit-mask-image: radial-gradient(circle 22vmin at var(--lx) var(--ly),
-    #000 0%, rgba(0,0,0,0.75) 42%, transparent 70%);
-  mask-image: radial-gradient(circle 22vmin at var(--lx) var(--ly),
-    #000 0%, rgba(0,0,0,0.75) 42%, transparent 70%);
-}
+/* The record is real, legible text. This is deliberately NOT the shader's
+   behaviour: without WebGL2 there is no light to move, so gating legibility
+   on a cursor would mean a visitor on this path could never read the
+   evidence at all. A mask here would also be unfixable, because opacity on
+   the list cannot be raised again by its own children. The lamp survives as
+   atmosphere behind the text, and the meaning survives intact: testimony,
+   record, contradiction in red, verdict. */
+.hero.no-webgl .record li,
+.hero.static-record .record li { color: var(--record-ink); }
+.hero.no-webgl .record li.bleeds,
+.hero.static-record .record li.bleeds { color: var(--bleed); font-weight: 700; }
 
-/* Under the lamp the ink reads at full strength. Two layers, because a mask
-   cannot raise opacity on its own. */
-.hero.no-webgl .record li { opacity: 1; }
-.hero.no-webgl .record li.bleeds { color: var(--bleed); font-weight: 700; }
-
-@media (prefers-reduced-motion: reduce) {
-  .hero.no-webgl .record { opacity: 0.85; }
+/* The contradicting line is underlined as well as coloured, because colour
+   alone must not carry meaning. */
+.hero.no-webgl .record li.bleeds .mono,
+.hero.static-record .record li.bleeds .mono {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--bleed) 55%, transparent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }

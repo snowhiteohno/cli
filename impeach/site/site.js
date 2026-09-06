@@ -39,6 +39,8 @@
   // the DOM so the shader and the accessible copy cannot disagree.
   var lines = [].slice.call(recordEl ? recordEl.querySelectorAll("li") : []);
   var stamped = false;
+  // The shader owns the record only while the lamp can be moved.
+  var recordOn = 1.0;
 
   function landVerdict(originX, originY) {
     if (stamped) return;
@@ -151,7 +153,7 @@
 
     var u = {};
     ["uResolution", "uTime", "uLight", "uLightRadius", "uStamp",
-     "uStampOrigin", "uBleed", "uBleedCount", "uDark", "uRecordTex"
+     "uStampOrigin", "uBleed", "uBleedCount", "uDark", "uRecordTex", "uRecordOn"
     ].forEach(function (n) { u[n] = gl.getUniformLocation(prog, n); });
 
     var tex = gl.createTexture();
@@ -259,6 +261,7 @@
         gl.uniform4fv(u.uBleed, flat);
       }
       gl.uniform1f(u.uDark, dark ? 1 : 0);
+      gl.uniform1f(u.uRecordOn, recordOn);
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, ctx.tex);
       gl.uniform1i(u.uRecordTex, 0);
@@ -302,6 +305,9 @@
 
   function initFallback() {
     hero.classList.add("no-webgl");
+    // There is no light to move on this path, so the verdict lands at once
+    // rather than waiting on an interaction that cannot reveal anything.
+    landVerdict(0, 0);
     // The lamp becomes a CSS mask positioned by two custom properties.
     var box = function () { return hero.getBoundingClientRect(); };
     function move(x, y) {
@@ -329,7 +335,6 @@
     hero.style.setProperty("--lx", "50%");
     hero.style.setProperty("--ly", "58%");
     window.addEventListener("pointermove", function (e) { move(e.clientX, e.clientY); }, { passive: true });
-    window.setTimeout(function () { landVerdict(0, 0); }, 6000);
   }
 
   /* ------------------------------------------------------ section rules */
@@ -451,6 +456,16 @@
     });
   })();
 
+  /* ------------------------------------------------------------ the hint */
+
+  // The markup's hint describes the static page, because that is what a
+  // reader without script or without WebGL2 actually gets. The instruction
+  // to move the light is added only once there is a light to move.
+  function promiseTheLight() {
+    var hint = document.querySelector(".hero-hint");
+    if (hint) hint.textContent = "Move the light. The record is under the paper.";
+  }
+
   /* ---------------------------------------------------------------- boot */
 
   function boot(fragSource) {
@@ -471,12 +486,22 @@
     scene.start();
 
     if (reduce) {
-      // Final state, once, no loop and no drift.
+      // Final state, once, no loop and no drift. The paper and a soft fixed
+      // lamp stay as background, but the record goes back to being ordinary
+      // selectable text, because a fixed cone cannot light a whole line and
+      // reduced motion must not cost the reader information.
+      recordOn = 0.0;
+      hero.classList.add("static-record");
       landVerdict(0, 0);
       scene.resize();
       scene.start();
       return;
     }
+
+    // Only now is the instruction true: the shader compiled, and the lamp
+    // will follow input. Under reduced motion the block above has already
+    // returned, because there the lamp is fixed and cannot be moved.
+    promiseTheLight();
 
     var hasPointer = window.matchMedia("(pointer: fine)").matches;
 

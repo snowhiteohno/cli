@@ -22,15 +22,22 @@ def round_money(amount):
     return float(Decimal(str(amount)).quantize(Decimal("0.01"), rounding=ROUND_HALF_EVEN))
 
 
-def line_subtotal(item):
+def line_total(item):
     """Price times quantity for a single line item, rounded."""
     return round_money(item["price"] * item["qty"])
 
 
-def compute_total(items, tax_rate=TAX_RATE):
-    """Sum the line items and apply tax.
+def compute_total(items, tax_rate=TAX_RATE, discount=0.0):
+    """Sum the line items, apply an order-level discount, then apply tax.
 
     items is a sequence of mappings with "price" and "qty" keys.
+
+    discount is a currency amount taken off the whole order, not a rate and
+    not a per-line adjustment. It is applied before tax, which is the order
+    accounting systems expect: tax is owed on what the customer actually
+    pays. A discount larger than the subtotal floors the taxable amount at
+    zero rather than producing a negative total.
     """
     subtotal = sum(item["price"] * item["qty"] for item in items)
-    return round_money(subtotal * (1 + tax_rate))
+    discounted = max(subtotal - discount, 0.0)
+    return round_money(discounted * (1 + tax_rate))

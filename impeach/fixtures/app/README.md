@@ -5,7 +5,7 @@ exists so every verdict Impeach can produce has something real to rest on.
 
 Layout:
 
-- `app/service.py` holds `compute_total`, `round_money` and `line_subtotal`.
+- `app/service.py` holds `compute_total`, `round_money` and `line_total`.
   `compute_total` has three call sites, which is what makes a "no other
   callers" claim checkable.
 - `app/api.py` calls `compute_total` from `checkout` and `quote`.

@@ -18,9 +18,12 @@ import (
 	"syscall"
 
 	"github.com/entireio/cli/impeach/internal/checkpoint"
+	"github.com/entireio/cli/impeach/internal/claims"
 	"github.com/entireio/cli/impeach/internal/record"
+	"github.com/entireio/cli/impeach/internal/report"
 	"github.com/entireio/cli/impeach/internal/runner"
 	"github.com/entireio/cli/impeach/internal/transcript"
+	"github.com/entireio/cli/impeach/internal/verify"
 )
 
 // Version is the Impeach version, printed on every run so a reader knows which
@@ -78,6 +81,9 @@ func run(argv []string, stdout, stderr *os.File) int {
 	defer stop()
 
 	if err := audit(ctx, opts, stdout, stderr); err != nil {
+		if errors.Is(err, errFailOn) {
+			return exitFailOn
+		}
 		fmt.Fprintf(stderr, "entire-impeach: %v\n", err)
 		return exitError
 	}
@@ -216,26 +222,155 @@ func audit(ctx context.Context, opts *options, stdout, stderr *os.File) error {
 		}
 	}()
 
-	printHeader(stdout, res, wt, opts)
+	var notes []string
 
 	stream, err := readTestimony(ctx, resolver, res, repo, opts, stdout)
 	if err != nil {
-		// A missing or unreadable transcript is a state, not a failure: the
-		// record-side rows still run. Say so and carry on.
-		fmt.Fprintf(stdout, "Testimony unavailable (%v). Execution and reading claims will be unverifiable.\n", err)
-		return nil
+		// A missing or unreadable transcript is a state, not a failure. With
+		// no testimony there are no claims to check, so the run reports that
+		// and stops rather than inventing rows.
+		notes = append(notes, fmt.Sprintf("Testimony unavailable (%v); execution and reading claims are unverifiable.", err))
+		stream = &transcript.Stream{Adapter: opts.adapter}
 	}
-	printTestimony(stdout, stream)
+	notes = append(notes, testimonyNotes(stream)...)
 
 	rec := buildRecord(ctx, log, repo, res, wt, opts, stdout, stderr)
-	printRecord(stdout, rec)
+	if rec.ChangesErr != "" {
+		notes = append(notes, fmt.Sprintf("Entity diff unavailable (%s); structural claims are unverifiable.", rec.ChangesErr))
+	}
+	if rec.Rerun != nil && rec.Rerun.ExitCodeOnly {
+		notes = append(notes, "The test command emits no per-test ids, so the rerun was adjudicated on the exit code alone. "+
+			"Add -v, or -q --tb=no -rA for pytest, to get per-test evidence.")
+	}
+	if res.MetadataErr != "" {
+		notes = append(notes, fmt.Sprintf("Checkpoint metadata unavailable (%s); resolved from the commit trailer alone.", res.MetadataErr))
+	}
+	if len(res.Ambiguous) > 0 {
+		notes = append(notes, fmt.Sprintf("Checkpoint %s is carried by %d commits; auditing the newest.",
+			res.ID, len(res.Ambiguous)+1))
+	}
+
+	rep := assemble(res, stream, rec, opts, log, notes)
+	if err := report.Table(stdout, rep); err != nil {
+		return err
+	}
+	if failOnMet(rep, opts.failOn) {
+		return errFailOn
+	}
 	return nil
+}
+
+// errFailOn signals that the --fail-on condition was met, which is exit 2 and
+// not a runtime error.
+var errFailOn = errors.New("fail-on condition met")
+
+func testimonyNotes(s *transcript.Stream) []string {
+	var notes []string
+	if len(s.Events) == 0 {
+		return notes
+	}
+	ch := s.Channels()
+	if !ch.Commands {
+		notes = append(notes, "This transcript carries no command records; execution claims are unverifiable.")
+	}
+	if !ch.Reads {
+		notes = append(notes, "This transcript carries no read records; reading claims are unverifiable.")
+	}
+	if s.SubagentRecords > 0 {
+		notes = append(notes, fmt.Sprintf("%d subagent records not examined.", s.SubagentRecords))
+	}
+	if !s.TimestampsPresent() {
+		notes = append(notes, "This transcript carries no timestamps; ordering and the report use turn numbers.")
+	}
+	return notes
+}
+
+// assemble runs the extractors and the verifiers and builds the report.
+func assemble(res *checkpoint.Resolved, stream *transcript.Stream, rec *auditRecord,
+	opts *options, log *runner.Logged, notes []string) *report.Report {
+
+	extractor := claims.Pattern{}
+	found, err := extractor.Extract(stream.Events)
+	if err != nil {
+		notes = append(notes, fmt.Sprintf("Claim extraction failed (%v).", err))
+	}
+
+	vr := &verify.Record{
+		Stream:       stream,
+		Changes:      rec.Changes,
+		Rerun:        rec.Rerun,
+		FilesTouched: res.FilesTouched,
+		Impacts:      map[string]*record.Impact{},
+		RepoRoot:     opts.repo,
+	}
+	exec := verify.Execution{TestCommand: rec.TestCommand}
+
+	rows := make([]report.Row, 0, len(found))
+	for _, c := range found {
+		// Phase 5 ships the execution verifier. The other families are
+		// extracted and verified in phase 6; until then nothing claims to
+		// have checked them, so they are simply not extracted yet.
+		if c.Family != claims.Execution {
+			continue
+		}
+		rows = append(rows, report.Row{Claim: c, Verdict: exec.Verify(c, vr)})
+	}
+
+	ch := stream.Channels()
+	in := report.Inputs{
+		Adapter:      adapterName(stream, opts),
+		Extractors:   []string{extractor.Name()},
+		TestCommand:  rec.TestCommand,
+		Rerun:        rec.Rerun != nil && rec.Rerun.Status != record.RerunNotRun,
+		ModelCommand: opts.model,
+		Channels: map[string]bool{
+			"commands": ch.Commands, "reads": ch.Reads,
+			"edits": ch.Edits, "prompts": ch.Prompts,
+			"graph": rec.Changes != nil,
+		},
+	}
+	cp := report.Checkpoint{
+		ID: res.ID, Commit: res.Commit, Parent: res.Parent,
+		Agent: res.Agent, SessionIDs: res.SessionIDs, IsMerge: res.IsMerge,
+	}
+	return report.New(cp, in, rows, notes, limitations(), log.Calls())
+}
+
+func adapterName(s *transcript.Stream, opts *options) string {
+	if s.Adapter != "" {
+		return s.Adapter
+	}
+	return opts.adapter
+}
+
+// limitations are the standing caveats, always printed, because a reader has
+// to know what the tool cannot see.
+func limitations() []string {
+	return []string{
+		"Claim detection is pattern based. Vaguely phrased claims are missed; a missed claim is silent, not a false one.",
+		"Result parsing knows pytest, go test, jest, cargo, rspec, phpunit, maven and gradle summaries. Other runners fall to uncorroborated.",
+		"The fixture app under impeach/fixtures/app is seeded to exercise each verdict.",
+		"One transcript adapter, claude-code. Other agents degrade to unverifiable rows by design.",
+	}
+}
+
+func failOnMet(r *report.Report, failOn string) bool {
+	switch failOn {
+	case "impeached":
+		return r.Counts.Impeached > 0
+	case "uncorroborated":
+		return r.Counts.Impeached > 0 || r.Counts.Uncorroborated > 0
+	default:
+		return false
+	}
 }
 
 // auditRecord is the record side of the cross-examination.
 type auditRecord struct {
 	Changes *record.CommitChanges
 	Rerun   *record.Rerun
+	// TestCommand is the command actually used, from --test or .impeach.json.
+	TestCommand string
 	// ChangesErr records why the entity diff is unavailable, if it is. A
 	// missing record channel is a state, so the structural rows become
 	// unverifiable rather than the run failing.
@@ -264,6 +399,8 @@ func buildRecord(ctx context.Context, run runner.Runner, repo string, res *check
 		setup = cfg.Setup
 	}
 
+	out.TestCommand = test
+
 	switch {
 	case opts.noRerun:
 		out.Rerun = &record.Rerun{Status: record.RerunNotRun, Reason: "--no-rerun"}
@@ -286,37 +423,6 @@ func buildRecord(ctx context.Context, run runner.Runner, repo string, res *check
 	return out
 }
 
-func printRecord(stdout *os.File, r *auditRecord) {
-	if r.ChangesErr != "" {
-		fmt.Fprintf(stdout, "Entity diff unavailable (%s); structural claims will be unverifiable.\n", r.ChangesErr)
-	} else if r.Changes != nil {
-		fmt.Fprintf(stdout, "Record: %d entity changes across %d files.\n",
-			len(r.Changes.Changes), len(r.Changes.Files))
-		for _, c := range r.Changes.Changes {
-			fmt.Fprintf(stdout, "  %-18s %s %s (%s:%d, %d dependents)\n",
-				c.Kind, c.SymbolKind, c.Name, c.Path, c.Line, c.Dependents)
-		}
-		for _, w := range r.Changes.Warnings {
-			fmt.Fprintf(stdout, "  graph warning: %s\n", w)
-		}
-	}
-
-	fmt.Fprintf(stdout, "Rerun: %s.", r.Rerun.Status)
-	if r.Rerun.Verdict != "" {
-		fmt.Fprintf(stdout, " %s.", r.Rerun.Verdict)
-	}
-	if r.Rerun.Reason != "" {
-		fmt.Fprintf(stdout, " (%s)", r.Rerun.Reason)
-	}
-	fmt.Fprintln(stdout)
-	for _, id := range r.Rerun.NewFailures {
-		fmt.Fprintf(stdout, "  new failure: %s\n", id)
-	}
-	for _, id := range r.Rerun.PreExisting {
-		fmt.Fprintf(stdout, "  pre-existing failure, not blamed on this checkpoint: %s\n", id)
-	}
-}
-
 // readTestimony fetches the transcript and parses it with the chosen adapter.
 func readTestimony(ctx context.Context, resolver *checkpoint.Resolver, res *checkpoint.Resolved,
 	repo string, opts *options, stdout *os.File) (*transcript.Stream, error) {
@@ -336,69 +442,11 @@ func readTestimony(ctx context.Context, resolver *checkpoint.Resolver, res *chec
 	return cc.ParseStream(t.Raw)
 }
 
-func printTestimony(stdout *os.File, s *transcript.Stream) {
-	ch := s.Channels()
-	fmt.Fprintf(stdout, "Testimony: %d events from adapter %s. Channels: commands %s, reads %s, edits %s, prompts %s.\n",
-		len(s.Events), s.Adapter, yesNo(ch.Commands), yesNo(ch.Reads), yesNo(ch.Edits), yesNo(ch.Prompts))
-	if s.SubagentRecords > 0 {
-		fmt.Fprintf(stdout, "%d subagent records not examined.\n", s.SubagentRecords)
-	}
-	if !s.TimestampsPresent() {
-		fmt.Fprintf(stdout, "This transcript carries no timestamps; ordering and the report use turn numbers.\n")
-	}
-	if edited := s.EditedPaths(); len(edited) > 0 {
-		fmt.Fprintf(stdout, "Files edited in the session: %s.\n", strings.Join(edited, ", "))
-	}
-}
-
 func yesNo(b bool) string {
 	if b {
 		return "yes"
 	}
 	return "no"
-}
-
-func printHeader(stdout *os.File, res *checkpoint.Resolved, wt *record.Worktrees, opts *options) {
-	agent := res.Agent
-	if agent == "" {
-		agent = "unknown"
-	}
-	fmt.Fprintf(stdout, "Impeach %s report for checkpoint %s (commit %s, parent %s), agent %s.\n",
-		Version, res.ID, short(res.Commit), short(res.Parent), agent)
-
-	rerun := "yes"
-	if opts.noRerun || opts.test == "" {
-		rerun = "no"
-	}
-	model := opts.model
-	if model == "" {
-		model = "none"
-	}
-	test := opts.test
-	if test == "" {
-		test = "none"
-	}
-	fmt.Fprintf(stdout, "Adapter %s. Extractors: pattern. Test command: %s. Rerun: %s. Model command: %s.\n",
-		opts.adapter, test, rerun, model)
-
-	if res.IsMerge {
-		fmt.Fprintf(stdout, "This is a merge commit; the diff is against the first parent.\n")
-	}
-	if len(res.Ambiguous) > 0 {
-		fmt.Fprintf(stdout, "Checkpoint %s is carried by %d commits; auditing the newest. Others: %s.\n",
-			res.ID, len(res.Ambiguous)+1, strings.Join(shortAll(res.Ambiguous), ", "))
-	}
-	if res.MetadataErr != "" {
-		fmt.Fprintf(stdout, "Checkpoint metadata unavailable (%s); resolved from the commit trailer alone.\n", res.MetadataErr)
-	}
-	if len(res.SessionIDs) > 0 {
-		fmt.Fprintf(stdout, "Sessions: %s.\n", strings.Join(res.SessionIDs, ", "))
-	}
-	base := wt.Base
-	if base == "" {
-		base = "none (root commit)"
-	}
-	fmt.Fprintf(stdout, "Worktrees: head %s, base %s.\n", wt.Head, base)
 }
 
 func short(sha string) string {

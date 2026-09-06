@@ -1,0 +1,59 @@
+{
+  "cli_version": "0.10.6-nightly.202609050622.61dac01ed.0.20260905201708-3dbdf8b83c39+dirty",
+  "checkpoint_id": "01M1TYA01Q0GTN2AQ61BWTSMSF",
+  "session_id": "18b673aa-56ac-4a95-b915-e39f125bdccd",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-06T08:45:38.88843Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "impeach/site/hero.frag.glsl",
+    "impeach/site/index.html",
+    "impeach/site/site.js",
+    "impeach/site/style.css"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-opus-5",
+  "turn_id": "16a2b9498506",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 2,
+    "cache_creation_tokens": 52249,
+    "cache_read_tokens": 16035,
+    "output_tokens": 178,
+    "api_call_count": 1
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-06T08:45:38.885127Z",
+    "agent_lines": 0,
+    "agent_removed": 0,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 26,
+    "total_committed": 0,
+    "total_lines_changed": 26,
+    "agent_percentage": 0,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 87,
+      "user_lines_removed": 26,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        "impeach/site/hero.frag.glsl": 6,
+        "impeach/site/index.html": 9,
+        "impeach/site/site.js": 28,
+        "impeach/site/style.css": 44
+      },
+      "user_removed_per_file": {
+        "impeach/site/hero.frag.glsl": 2,
+        "impeach/site/index.html": 4,
+        "impeach/site/site.js": 3,
+        "impeach/site/style.css": 17
+      }
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "name": "entire",
+  "args": [
+    "graph",
+    "verify",
+    "--repo",
+    "<home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/head",
+    "--test",
+    "cd impeach/fixtures/app && { test -d .venv || { python3 -m venv .venv && ./.venv/bin/python -m pip install -q -r requirements.txt; }; } && ./.venv/bin/python -m pytest -q --tb=no -rA",
+    "--pre-edit-baseline",
+    "<home>/.local/share/entire/plugins/data/impeach/wt/458bb14287ec/baseline.json"
+  ],
+  "stdout": "NEWLY FAILING (3): tests/test_rounding.py::test_round_money_negative, tests/test_rounding.py::test_round_money_two_places, tests/test_service.py::test_round_money_half_up\nVERDICT: REGRESSION in 3 tests: tests/test_rounding.py::test_round_money_negative, tests/test_rounding.py::test_round_money_two_places, tests/test_service.py::test_round_money_half_up\n",
+  "exit": 0
+}

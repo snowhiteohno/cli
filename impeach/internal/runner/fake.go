@@ -119,6 +119,14 @@ type Fake struct {
 	// Strict makes an unmatched call an error rather than an empty success.
 	// Tests want strict; a partially recorded scenario does not.
 	Strict bool
+	// Normalize rewrites a live call's key before matching, and must be the
+	// same transformation the Recording applied when it wrote the scenario.
+	//
+	// Without this, scrubbing defeats replay: a recording made portable by
+	// rewriting an absolute repository path to <repo> can never match a live
+	// call that still carries the real path. Recording and replay have to be
+	// symmetric or the fixtures are write-only.
+	Normalize func(string) string
 }
 
 // NewFake builds a Fake from calls held in memory.
@@ -176,6 +184,9 @@ func numPrefix(name string) int {
 // verifier that asks the same question twice gets the same answer.
 func (f *Fake) Run(_ context.Context, name string, args []string, _ []byte) ([]byte, []byte, int, error) {
 	key := Format(name, args)
+	if f.Normalize != nil {
+		key = f.Normalize(key)
+	}
 
 	f.mu.Lock()
 	defer f.mu.Unlock()

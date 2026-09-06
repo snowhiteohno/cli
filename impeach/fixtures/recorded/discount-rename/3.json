@@ -1,0 +1,14 @@
+{
+  "name": "git",
+  "args": [
+    "-C",
+    "<repo>",
+    "rev-list",
+    "--parents",
+    "-n",
+    "1",
+    "0bd3033364bb727d92175e1ce127ca34984208c0"
+  ],
+  "stdout": "0bd3033364bb727d92175e1ce127ca34984208c0 fe7fd964ed40805f2dcffc16fbcb6f39633ce108\n",
+  "exit": 0
+}

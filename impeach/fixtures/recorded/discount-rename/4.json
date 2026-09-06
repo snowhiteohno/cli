@@ -1,0 +1,11 @@
+{
+  "name": "entire",
+  "args": [
+    "checkpoint",
+    "explain",
+    "01M1TJCCYXR7ZZTK1H8167G249",
+    "--json"
+  ],
+  "stdout": "{\n  \"checkpoint_id\": \"01M1TJCCYXR7ZZTK1H8167G249\",\n  \"strategy\": \"manual-commit\",\n  \"branch\": \"pricing-order-discount\",\n  \"checkpoints_count\": 1,\n  \"files_touched\": [\n    \"impeach/fixtures/app/README.md\",\n    \"impeach/fixtures/app/app/api.py\",\n    \"impeach/fixtures/app/app/service.py\",\n    \"impeach/fixtures/app/tests/test_api.py\",\n    \"impeach/fixtures/app/tests/test_service.py\"\n  ],\n  \"session_count\": 1,\n  \"sessions\": [\n    {\n      \"index\": 0,\n      \"session_id\": \"89521098-517f-41e6-99de-e9f44259202a\",\n      \"agent\": \"Claude Code\",\n      \"model\": \"claude-opus-5\",\n      \"created_at\": \"2026-09-06T05:17:14.733978Z\",\n      \"turn_id\": \"bf033c077206\",\n      \"files_touched\": [\n        \"impeach/fixtures/app/README.md\",\n        \"impeach/fixtures/app/app/api.py\",\n        \"impeach/fixtures/app/app/service.py\",\n        \"impeach/fixtures/app/tests/test_api.py\",\n        \"impeach/fixtures/app/tests/test_service.py\"\n      ],\n      \"token_usage\": {\n        \"input_tokens\": 28,\n        \"output_tokens\": 7509,\n        \"cache_read_tokens\": 1143771,\n        \"cache_creation_tokens\": 71695\n      }\n    }\n  ]\n}\n",
+  "exit": 0
+}

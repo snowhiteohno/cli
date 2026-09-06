@@ -1,0 +1,13 @@
+{
+  "name": "git",
+  "args": [
+    "-C",
+    "<repo>",
+    "log",
+    "-1",
+    "--format=%B",
+    "458bb14287ec2e0dcd4b6c52a779c9213af5be52"
+  ],
+  "stdout": "fixture: use bankers rounding in round_money\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>\nEntire-Checkpoint: 01M1TET4N33VMY0DTHNZKV5HT9\n\n",
+  "exit": 0
+}

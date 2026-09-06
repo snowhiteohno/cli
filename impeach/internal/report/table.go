@@ -213,13 +213,13 @@ func writeEvidence(w io.Writer, e verify.Evidence) {
 	label := string(e.Type)
 	switch e.Type {
 	case verify.EvidenceCommand:
-		fmt.Fprintf(w, "  %-8s seq %d  %s", label, e.Seq, e.Text)
+		fmt.Fprintf(w, "  %-8s seq %d  %s", label, e.Seq, Scrub(e.Text))
 		if e.Detail != "" {
 			fmt.Fprintf(w, "  ->  %s", e.Detail)
 		}
 		fmt.Fprintln(w)
 		if e.Excerpt != "" {
-			for _, line := range lastLines(e.Excerpt, 3) {
+			for _, line := range lastLines(Scrub(e.Excerpt), 3) {
 				fmt.Fprintf(w, "           | %s\n", line)
 			}
 		}
@@ -241,7 +241,7 @@ func writeEvidence(w io.Writer, e verify.Evidence) {
 		fmt.Fprintln(w)
 	}
 	if e.Command != "" {
-		fmt.Fprintf(w, "           reproduce: %s\n", e.Command)
+		fmt.Fprintf(w, "           reproduce: %s\n", Scrub(e.Command))
 	}
 }
 

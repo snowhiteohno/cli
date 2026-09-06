@@ -1,0 +1,13 @@
+{
+  "name": "git",
+  "args": [
+    "-C",
+    "<repo>",
+    "rev-parse",
+    "--verify",
+    "--quiet",
+    "01M1TJCCYXR7ZZTK1H8167G249^{commit}"
+  ],
+  "stdout": "",
+  "exit": 1
+}

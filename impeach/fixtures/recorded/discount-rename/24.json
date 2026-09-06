@@ -1,0 +1,13 @@
+{
+  "name": "git",
+  "args": [
+    "-C",
+    "<repo>",
+    "worktree",
+    "remove",
+    "--force",
+    "<home>/.local/share/entire/plugins/data/impeach/wt/0bd3033364bb/base"
+  ],
+  "stdout": "",
+  "exit": 0
+}

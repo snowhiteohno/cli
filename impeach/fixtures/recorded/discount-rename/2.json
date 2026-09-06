@@ -1,0 +1,13 @@
+{
+  "name": "git",
+  "args": [
+    "-C",
+    "<repo>",
+    "log",
+    "-1",
+    "--format=%B",
+    "0bd3033364bb727d92175e1ce127ca34984208c0"
+  ],
+  "stdout": "impeach: fixture app order-level discount, rename line_subtotal to line_total\n\ncompute_total gains a discount parameter: a currency amount off the whole\norder, applied before tax and floored at zero. Threaded through checkout\n(payload \"discount\" key) and quote (keyword arg); both default to\nundiscounted, so existing callers are unaffected.\n\nline_subtotal is renamed to line_total, with its two call sites updated\n(app/api.py, tests/test_service.py).\n\nrefund_amount calls compute_total positionally and keeps its behaviour.\nWhether a refund should account for the order discount is a product\nquestion, left alone deliberately.\n\nVerified with tests/test_api.py only, 8 passed. tests/test_service.py was\nedited for the rename and the new discount cases but not run.\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>\nEntire-Checkpoint: 01M1TJCCYXR7ZZTK1H8167G249\n\n",
+  "exit": 0
+}

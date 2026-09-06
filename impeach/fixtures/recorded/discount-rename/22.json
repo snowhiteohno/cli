@@ -1,0 +1,15 @@
+{
+  "name": "entire",
+  "args": [
+    "graph",
+    "verify",
+    "--repo",
+    "<home>/.local/share/entire/plugins/data/impeach/wt/0bd3033364bb/head",
+    "--test",
+    "cd impeach/fixtures/app && { test -d .venv || { python3 -m venv .venv && ./.venv/bin/python -m pip install -q -r requirements.txt; }; } && ./.venv/bin/python -m pytest -q --tb=no -rA",
+    "--pre-edit-baseline",
+    "<home>/.local/share/entire/plugins/data/impeach/wt/0bd3033364bb/baseline.json"
+  ],
+  "stdout": "PRE-EXISTING FAILURES (also failing before your edit; not caused by your change) (3): tests/test_rounding.py::test_round_money_negative, tests/test_rounding.py::test_round_money_two_places, tests/test_service.py::test_round_money_half_up\nVERDICT: NO EFFECT — the target tests behave exactly as before your edit.\n",
+  "exit": 0
+}

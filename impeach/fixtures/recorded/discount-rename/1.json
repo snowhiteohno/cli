@@ -1,0 +1,14 @@
+{
+  "name": "git",
+  "args": [
+    "-C",
+    "<repo>",
+    "log",
+    "--all",
+    "--format=%H",
+    "--grep=^Entire-Checkpoint: 01M1TJCCYXR7ZZTK1H8167G249",
+    "--regexp-ignore-case"
+  ],
+  "stdout": "0bd3033364bb727d92175e1ce127ca34984208c0\n",
+  "exit": 0
+}

@@ -11,6 +11,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -51,13 +52,22 @@ type options struct {
 	keepWorktrees bool
 	repo          string
 	version       bool
+	// record writes every Runner call to a directory, turning a real audit
+	// into a replayable scenario.
+	record string
+	// replay serves a previously recorded scenario instead of running
+	// anything. This is what makes the end-to-end tests offline.
+	replay string
+	// scrub rewrites absolute paths and identities out of a recording before
+	// it is written, because scenarios are committed.
+	scrub bool
 }
 
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
 
-func run(argv []string, stdout, stderr *os.File) int {
+func run(argv []string, stdout, stderr io.Writer) int {
 	opts, err := parseFlags(argv, stderr)
 	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -90,7 +100,7 @@ func run(argv []string, stdout, stderr *os.File) int {
 	return exitOK
 }
 
-func parseFlags(argv []string, stderr *os.File) (*options, error) {
+func parseFlags(argv []string, stderr io.Writer) (*options, error) {
 	opts := &options{}
 	fs := flag.NewFlagSet("entire-impeach", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -106,6 +116,9 @@ func parseFlags(argv []string, stderr *os.File) (*options, error) {
 	fs.BoolVar(&opts.keepWorktrees, "keep-worktrees", false, "leave the temporary worktrees in place")
 	fs.StringVar(&opts.repo, "repo", "", "repository to audit (default: the current repository)")
 	fs.BoolVar(&opts.version, "version", false, "print the version and exit")
+	fs.StringVar(&opts.record, "record", "", "record every external call to this directory, for replay")
+	fs.StringVar(&opts.replay, "replay", "", "replay a recorded directory instead of running anything")
+	fs.BoolVar(&opts.scrub, "scrub", true, "scrub absolute paths and identities out of a recording")
 
 	fs.Usage = func() {
 		fmt.Fprintf(stderr, `entire impeach cross-examines an agent's claims against the record.
@@ -170,15 +183,20 @@ func validate(opts *options) error {
 	default:
 		return fmt.Errorf("unknown --adapter %q: want auto or claude-code", opts.adapter)
 	}
-	if (opts.format == "json" || opts.format == "html") && opts.out == "" {
-		return fmt.Errorf("--format %s needs --out to say where to write the report", opts.format)
+	// --format json prints to stdout when no --out is given, so the command
+	// composes with a pipe. HTML is a file by nature and needs a directory.
+	if opts.format == "html" && opts.out == "" {
+		return fmt.Errorf("--format html needs --out to say where to write the report")
+	}
+	if opts.record != "" && opts.replay != "" {
+		return fmt.Errorf("--record and --replay are mutually exclusive: one writes a scenario, the other reads one")
 	}
 	return nil
 }
 
 // audit is the pipeline. Phase 2 wires resolve and the worktrees; the
 // remaining stages arrive in their own phases behind the same boundaries.
-func audit(ctx context.Context, opts *options, stdout, stderr *os.File) error {
+func audit(ctx context.Context, opts *options, stdout, stderr io.Writer) error {
 	repo := opts.repo
 	if repo == "" {
 		// The dispatcher passes ENTIRE_REPO_ROOT, which is cheaper and more
@@ -198,7 +216,11 @@ func audit(ctx context.Context, opts *options, stdout, stderr *os.File) error {
 	}
 	repo = abs
 
-	log := &runner.Logged{Inner: runner.Exec{}}
+	base, err := buildRunner(opts, repo)
+	if err != nil {
+		return err
+	}
+	log := &runner.Logged{Inner: base}
 
 	resolver := &checkpoint.Resolver{Run: log, Repo: repo}
 	res, err := resolver.Resolve(ctx, opts.ref)
@@ -224,7 +246,7 @@ func audit(ctx context.Context, opts *options, stdout, stderr *os.File) error {
 
 	var notes []string
 
-	stream, err := readTestimony(ctx, resolver, res, repo, opts, stdout)
+	stream, err := readTestimony(ctx, resolver, res, repo, opts)
 	if err != nil {
 		// A missing or unreadable transcript is a state, not a failure. With
 		// no testimony there are no claims to check, so the run reports that
@@ -251,7 +273,8 @@ func audit(ctx context.Context, opts *options, stdout, stderr *os.File) error {
 	}
 
 	rep := assemble(res, stream, rec, opts, log, notes)
-	if err := report.Table(stdout, rep); err != nil {
+
+	if err := emit(rep, opts, stdout); err != nil {
 		return err
 	}
 	if failOnMet(rep, opts.failOn) {
@@ -260,9 +283,106 @@ func audit(ctx context.Context, opts *options, stdout, stderr *os.File) error {
 	return nil
 }
 
+// emit writes the report in the requested formats.
+//
+// The table always goes to stdout unless the format explicitly replaces it,
+// because a run that prints nothing to the terminal looks like a run that did
+// nothing. JSON and HTML are additionally written to --out whenever --out is
+// given, which is what makes `--format table --out dir` useful.
+func emit(rep *report.Report, opts *options, stdout io.Writer) error {
+	if opts.format == "table" || opts.out != "" {
+		if err := report.Table(stdout, rep); err != nil {
+			return err
+		}
+	}
+	if opts.out == "" {
+		if opts.format == "json" {
+			return report.WriteJSON(stdout, rep)
+		}
+		return nil
+	}
+
+	if err := os.MkdirAll(opts.out, 0o755); err != nil {
+		return fmt.Errorf("create --out directory %s: %w", opts.out, err)
+	}
+	path := filepath.Join(opts.out, "impeach.json")
+	blob, err := report.ToJSON(rep)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(path, blob, 0o644); err != nil {
+		return fmt.Errorf("write %s: %w", path, err)
+	}
+	fmt.Fprintf(stdout, "\nWrote %s\n", path)
+	return nil
+}
+
 // errFailOn signals that the --fail-on condition was met, which is exit 2 and
 // not a runtime error.
 var errFailOn = errors.New("fail-on condition met")
+
+// buildRunner picks the Runner for this run.
+//
+// This is the whole point of having one Runner boundary. Recording, replaying
+// and really executing are three implementations of one interface, so nothing
+// downstream knows or cares which it got.
+func buildRunner(opts *options, repo string) (runner.Runner, error) {
+	switch {
+	case opts.replay != "":
+		f, err := runner.LoadFake(opts.replay)
+		if err != nil {
+			return nil, err
+		}
+		// A replayed scenario missing a call should fail loudly rather than
+		// quietly return an empty success, which would look like a channel
+		// that legitimately had nothing in it.
+		f.Strict = true
+		// The same transformation the recording applied, so a scrubbed
+		// scenario still matches live calls.
+		f.Normalize = scrubber(repo)
+		return f, nil
+
+	case opts.record != "":
+		rec := &runner.Recording{Inner: runner.Exec{}, Dir: opts.record}
+		if opts.scrub {
+			rec.Scrub = scrubber(repo)
+		}
+		return rec, nil
+
+	default:
+		return runner.Exec{}, nil
+	}
+}
+
+// scrubber rewrites machine-specific strings out of a recording.
+//
+// Recorded scenarios are committed and read by strangers, so absolute paths,
+// the home directory and the user name all have to go. The replacements are
+// stable placeholders rather than deletions, so a replayed path still
+// relativizes the way a real one does.
+func scrubber(repo string) func(string) string {
+	home, _ := os.UserHomeDir()
+	user := os.Getenv("USER")
+	if user == "" {
+		user = os.Getenv("LOGNAME")
+	}
+	var replacements [][2]string
+	if repo != "" {
+		replacements = append(replacements, [2]string{repo, "<repo>"})
+	}
+	if home != "" && home != repo {
+		replacements = append(replacements, [2]string{home, "<home>"})
+	}
+	if len(user) > 2 {
+		replacements = append(replacements, [2]string{user, "<user>"})
+	}
+	return func(s string) string {
+		for _, r := range replacements {
+			s = strings.ReplaceAll(s, r[0], r[1])
+		}
+		return report.Scrub(s)
+	}
+}
 
 func testimonyNotes(s *transcript.Stream) []string {
 	var notes []string
@@ -389,7 +509,7 @@ type auditRecord struct {
 }
 
 func buildRecord(ctx context.Context, run runner.Runner, repo string, res *checkpoint.Resolved,
-	wt *record.Worktrees, opts *options, stdout, stderr *os.File) *auditRecord {
+	wt *record.Worktrees, opts *options, stdout, stderr io.Writer) *auditRecord {
 	out := &auditRecord{
 		Rerun:   &record.Rerun{Status: record.RerunNotRun},
 		Impacts: map[string]*record.Impact{},
@@ -457,7 +577,7 @@ func buildRecord(ctx context.Context, run runner.Runner, repo string, res *check
 
 // readTestimony fetches the transcript and parses it with the chosen adapter.
 func readTestimony(ctx context.Context, resolver *checkpoint.Resolver, res *checkpoint.Resolved,
-	repo string, opts *options, stdout *os.File) (*transcript.Stream, error) {
+	repo string, opts *options) (*transcript.Stream, error) {
 	t, err := resolver.FetchTranscript(ctx, res.ID, -1)
 	if err != nil {
 		return nil, err

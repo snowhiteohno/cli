@@ -1,0 +1,4 @@
+# Local build of the plugin binary. `entire plugin install ./entire-impeach`
+# symlinks to it rather than copying, so if you use that install path the file
+# has to stay where it is.
+/entire-impeach

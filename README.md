@@ -790,7 +790,7 @@ entire <command> --help    # Command-specific help
 
 ## Impeach
 
-Impeach is a CLI plugin built in this fork that cross-examines what an AI coding agent claimed it did against the record of what it actually did; see [impeach/](impeach/) and [impeach/docs/PRD.md](impeach/docs/PRD.md).
+Impeach is a CLI plugin built in this fork that cross-examines what an AI coding agent claimed it did against the record of what it actually did; see [impeach/README.md](impeach/README.md) for install and reproduce steps.
 
 ## License
 

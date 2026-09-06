@@ -782,3 +782,42 @@ what the review does not prove: it shows the build added what it claims and
 disturbed nothing else, and says nothing about verdict correctness on
 transcripts nobody has written yet. The four false positives found in phases
 5, 6 and 8 are the evidence that reading the code is not how those get caught.
+
+## The README, and three errors in its own instructions
+
+Wrote `impeach/README.md`: who it is for in the first paragraph, install,
+reproduce, what gets checked, limitations, security posture, disclosure.
+The repository README pointer now points at it and is still one line.
+
+Every command was run from a clean clone of the fork before being written
+down, which turned out to matter. Three of the instructions were wrong, and
+none of the three would have been caught by reading:
+
+1. **A plain `git clone` brings no checkpoints.** The refs live under
+   `refs/entire/*`, outside git's default refspec, so a fresh clone had 0 of
+   the 8 that exist on the remote. `entire impeach` then correctly reports
+   that no commit carries the checkpoint, which is accurate and completely
+   baffling. The fix is one line, `git fetch origin
+   'refs/entire/*:refs/entire/*'`, and it is now step one in both documents.
+2. **`entire plugin dir` does not exist.** The install snippet already
+   committed in `BUILDATHON.md` used it to locate the managed directory. It is
+   the obvious guess and it is not a command.
+3. **`entire plugin install <path>` symlinks rather than copies.** Found by
+   building, installing, then deleting the local binary as cleanup: the
+   managed entry became a broken link and `entire impeach` went back to
+   "unknown command". The README now builds straight into
+   `~/.local/share/entire/plugins/bin`, which the CLI prepends to PATH at
+   startup, so there is no link to break. `/entire-impeach` is gitignored for
+   anyone who uses the `plugin install` route anyway.
+
+Also verified from that clean clone: `go test ./...` passes all 8 packages
+offline, because the replay scenarios need no Entire, git or agent, and the
+demo audit produces the impeached row and exit 2 under `--fail-on impeached`.
+The throwaway clone was deleted and the plugin reinstalled from the working
+tree.
+
+There is a pattern by now worth naming. Every serious defect in this build
+came from running the thing rather than reading it: the four verdict false
+positives, the write-only recorded fixtures, the unscrubbed `commands_run`,
+the prompt corpus in the report, and now three broken instructions in the
+install path. Reading found the typos.

@@ -318,24 +318,35 @@ Go 1.26 or newer, and Python 3 for the fixture app. Works offline. No model
 calls unless `--model` is passed.
 
 ```
-# 1. Build and install the plugin so `entire impeach` dispatches to it.
-cd impeach
-go build -o "$(entire plugin dir 2>/dev/null || echo ~/.local/share/entire/plugins/bin)/entire-impeach" ./cmd/entire-impeach
+# 1. Clone, and fetch the checkpoint refs. A plain clone does not bring them:
+#    refs/entire/* is outside git's default refspec, and without them the
+#    audit has no checkpoint to resolve.
+git clone https://github.com/snowhiteohno/cli.git
+cd cli
+git fetch origin 'refs/entire/*:refs/entire/*'
+entire checkpoint list          # 8 checkpoints
 
-# 2. Confirm it is discovered.
-entire plugin list
+# 2. Build the plugin into the managed directory, which the CLI prepends to
+#    PATH at startup. `entire plugin install ./entire-impeach` also works but
+#    symlinks rather than copies, so the built binary must then stay put.
+cd impeach
+mkdir -p ~/.local/share/entire/plugins/bin
+go build -o ~/.local/share/entire/plugins/bin/entire-impeach ./cmd/entire-impeach
+
+# 3. Confirm it is discovered.
+entire plugin list              # lists "impeach"
 entire impeach --version
 
-# 3. Build the fixture app's virtualenv.
+# 4. Build the fixture app's virtualenv.
 cd fixtures/app && sh scripts/setup.sh && cd -
 
-# 4. Audit the demo checkpoint that carries the impeached row.
+# 5. Audit the demo checkpoint that carries the impeached row.
 #    The test command bootstraps the virtualenv, because the fixture venv is
 #    gitignored and so absent from the detached worktrees graph verify uses.
 entire impeach 01M1TET4N33VMY0DTHNZKV5HT9 --repo <repo-root> --fail-on impeached \
   --test 'cd impeach/fixtures/app && { test -d .venv || { python3 -m venv .venv && ./.venv/bin/python -m pip install -q -r requirements.txt; }; } && ./.venv/bin/python -m pytest -q --tb=no -rA'
 
-# 5. Audit the second demo checkpoint, for the other three verdicts.
+# 6. Audit the second demo checkpoint, for the other three verdicts.
 entire impeach 01M1TJCCYXR7ZZTK1H8167G249 --repo <repo-root> \
   --test 'cd impeach/fixtures/app && ./.venv/bin/python -m pytest -q --tb=no -rA'
 ```
@@ -344,10 +355,20 @@ Verdict coverage is spread across the two checkpoints rather than shown in one
 table, and the reason is a finding rather than an omission. See the limitations
 below.
 
+Every command above was run from a clean clone of the fork before being
+written down. That is how two errors in these very instructions were found:
+the missing `refs/entire/*` fetch, without which a reviewer gets an accurate
+but baffling "no commit carries this checkpoint", and an install line using
+`entire plugin dir`, a command that does not exist. A third turned up while
+writing them down: `entire plugin install <path>` symlinks rather than
+copies, so deleting the binary you just built leaves a broken link and an
+unknown command. `impeach/README.md`
+carries the same steps with more explanation.
+
 Tests:
 
 ```
-cd impeach && go test ./...                     # 197 tests, no network, no agent
+cd impeach && go test ./...                     # 285 tests, no network, no agent
 cd impeach/fixtures/app && ./.venv/bin/python -m pytest -q
 ```
 

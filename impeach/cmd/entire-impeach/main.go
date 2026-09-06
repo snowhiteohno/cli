@@ -226,7 +226,95 @@ func audit(ctx context.Context, opts *options, stdout, stderr *os.File) error {
 		return nil
 	}
 	printTestimony(stdout, stream)
+
+	rec := buildRecord(ctx, log, repo, res, wt, opts, stdout, stderr)
+	printRecord(stdout, rec)
 	return nil
+}
+
+// auditRecord is the record side of the cross-examination.
+type auditRecord struct {
+	Changes *record.CommitChanges
+	Rerun   *record.Rerun
+	// ChangesErr records why the entity diff is unavailable, if it is. A
+	// missing record channel is a state, so the structural rows become
+	// unverifiable rather than the run failing.
+	ChangesErr string
+}
+
+func buildRecord(ctx context.Context, run runner.Runner, repo string, res *checkpoint.Resolved,
+	wt *record.Worktrees, opts *options, stdout, stderr *os.File) *auditRecord {
+	out := &auditRecord{Rerun: &record.Rerun{Status: record.RerunNotRun}}
+
+	g := &record.Graph{Runner: run}
+	changes, err := g.Commit(ctx, wt.Head, res.Commit)
+	if err != nil {
+		out.ChangesErr = err.Error()
+	} else {
+		out.Changes = changes
+	}
+
+	test, setup := opts.test, ""
+	if cfg, cfgErr := loadConfig(repo); cfgErr != nil {
+		fmt.Fprintf(stderr, "entire-impeach: %v\n", cfgErr)
+	} else {
+		if test == "" {
+			test = cfg.Test
+		}
+		setup = cfg.Setup
+	}
+
+	switch {
+	case opts.noRerun:
+		out.Rerun = &record.Rerun{Status: record.RerunNotRun, Reason: "--no-rerun"}
+	case test == "":
+		out.Rerun = &record.Rerun{Status: record.RerunNotRun,
+			Reason: "no test command; pass --test or commit an " + configName}
+	default:
+		// The command is echoed before it runs. It executes as the user, so
+		// the user gets to see exactly what was launched.
+		fmt.Fprintf(stdout, "Rerunning: %s\n", test)
+		v := &record.Verifier{Runner: run}
+		out.Rerun = v.Run(ctx, record.RerunOptions{
+			Test:         test,
+			Setup:        setup,
+			HeadRepo:     wt.Head,
+			BaseRepo:     wt.Base,
+			BaselinePath: filepath.Join(wt.Root(), "baseline.json"),
+		})
+	}
+	return out
+}
+
+func printRecord(stdout *os.File, r *auditRecord) {
+	if r.ChangesErr != "" {
+		fmt.Fprintf(stdout, "Entity diff unavailable (%s); structural claims will be unverifiable.\n", r.ChangesErr)
+	} else if r.Changes != nil {
+		fmt.Fprintf(stdout, "Record: %d entity changes across %d files.\n",
+			len(r.Changes.Changes), len(r.Changes.Files))
+		for _, c := range r.Changes.Changes {
+			fmt.Fprintf(stdout, "  %-18s %s %s (%s:%d, %d dependents)\n",
+				c.Kind, c.SymbolKind, c.Name, c.Path, c.Line, c.Dependents)
+		}
+		for _, w := range r.Changes.Warnings {
+			fmt.Fprintf(stdout, "  graph warning: %s\n", w)
+		}
+	}
+
+	fmt.Fprintf(stdout, "Rerun: %s.", r.Rerun.Status)
+	if r.Rerun.Verdict != "" {
+		fmt.Fprintf(stdout, " %s.", r.Rerun.Verdict)
+	}
+	if r.Rerun.Reason != "" {
+		fmt.Fprintf(stdout, " (%s)", r.Rerun.Reason)
+	}
+	fmt.Fprintln(stdout)
+	for _, id := range r.Rerun.NewFailures {
+		fmt.Fprintf(stdout, "  new failure: %s\n", id)
+	}
+	for _, id := range r.Rerun.PreExisting {
+		fmt.Fprintf(stdout, "  pre-existing failure, not blamed on this checkpoint: %s\n", id)
+	}
 }
 
 // readTestimony fetches the transcript and parses it with the chosen adapter.

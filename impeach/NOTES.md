@@ -1589,3 +1589,82 @@ is no build step for a hand-written page, and the coupling is enforced by
 sample means carrying the new block across by hand, and the test fails until
 someone does. That is a manual step with a guard on it, which is a different
 thing from a gap.
+
+## A third red workflow, and four numbers that had already rotted
+
+Asked again what was left, and swept rather than recalled. Nothing is broken.
+What turned up is one new fact and four stale figures, and the interesting part
+is how fast three of them went stale: two were written yesterday.
+
+### The nightly release workflow started failing overnight
+
+`BUILDATHON.md` said two workflows were red on this fork. Three are. The new
+one is **Nightly Release**, which fails at
+`actions/create-github-app-token` with "The 'client-id' (or deprecated
+'app-id') input must be set to a non-empty string", because the upstream GitHub
+App's id and key are repository secrets and a fork does not receive them. Same
+missing-secrets cause as E2E Tests, in a workflow whose job is to cut a
+release tag. Read out of the run log rather than guessed at.
+
+**It is cron triggered, at 06:00 UTC daily, and nobody touched the
+repository.** GitHub keeps running scheduled workflows on an active fork, so a
+paragraph that was accurate when written was wrong within a day through the
+passage of time alone. That is a different failure mode from the stale figures
+below, and worth separating: those went wrong because the build moved, this one
+went wrong because the clock did.
+
+Left red and explained, consistently with the other two. A daily cron failure
+is the most tempting of the three to silence, and silencing it would be the
+move this tool exists to catch.
+
+Also corrected in the same place: the claim that **impeach pages** is green on
+the tip. It has a path filter on `impeach/site/**` and
+`impeach/internal/report/**`, so a tip that touches neither shows no pages run
+at all rather than a green one. It last ran green at `1bac7c70b`. Saying "green
+on the tip" of a workflow that did not run there is a small thing that a judge
+clicking through would catch.
+
+### Four numbers, all of them about things that grow
+
+| Claim | Where | Actual |
+| --- | --- | --- |
+| "Twenty-six checkpoints" | `BUILDATHON.md` | 31 at `ec824074` |
+| "30 checkpoints" | `DEMO.md`, written yesterday | 31 at `ec824074` |
+| "197 Go tests and 18 pytest tests" | `BUILDATHON.md` | 333 Go, 25 pytest |
+| "285 tests" | `impeach/README.md` | 333 |
+
+Every one is a count of a set that grows with each commit, stated as though it
+were a constant. The checkpoint count was wrong by five within a day of being
+written; the `DEMO.md` one was wrong by one within hours, in a file whose own
+commit message argued against hardcoding numbers about HEAD. Writing that
+argument down did not stop me doing it on the next line.
+
+All four now name the commit they were measured at and point at the command
+that answers live. `demo-checkpoints.sh` already counted it live, which is why
+the script stayed right while the prose around it drifted.
+
+The pytest line was wrong twice over, and the second way matters more. It said
+the tests were "green at every commit", but 3 of the 25 fixture tests fail on
+purpose: they are the seeded failures the demo checkpoint's rounding change
+causes, and a green fixture would mean the demo had nothing to find. A reader
+who ran pytest and saw red would have concluded the build was broken. The
+number to watch there is 22 passed and 3 failed.
+
+### The standing conclusion, unchanged
+
+- `go test ./...` from the root has exactly one failing package,
+  `versioncheck`, from the `/opt/homebrew/bin/entire` symlink on this machine.
+  Not reproducible on a clone. Still the owner's call whether to remove it.
+- The impeach suite is green at 333.
+- The deployed page is byte identical to the committed one, 22,463 bytes,
+  checked by fetching it.
+- There is still no initial-intent checkpoint, and there still cannot honestly
+  be one.
+
+### What this keeps proving
+
+Four rounds of "what is left" have now produced the same shape of answer every
+time: the code is fine and a number in a document is not. The counts are the
+recurring offender because they are true when typed and decay silently
+afterwards, with no test watching them. The durable fix is the one applied
+here, which is to stop asserting them: name the commit, or name the command.

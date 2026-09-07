@@ -143,8 +143,9 @@ Every external call in two real audits is committed under
 cd impeach && go test ./...
 ```
 
-285 tests, no network, no agent. The end-to-end tests among them drive the real
-entry point against those recordings. `fixtures/recorded/README.md` explains
+333 tests at `ec824074`, no network, no agent. The count grows with the build,
+so the command above is the authority rather than this line. The end-to-end
+tests among them drive the real entry point against those recordings. `fixtures/recorded/README.md` explains
 the provenance and how to replay one by hand.
 
 ## What it checks

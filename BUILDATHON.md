@@ -169,8 +169,11 @@ does. An early version of the wrapper trusted an emptiness check on the output
 and reported a failed runner as a pass, which is corrected and covered by a
 test named for the mistake.
 
-Verification of Impeach itself: 197 Go tests and 18 pytest tests, green at
-every commit. No test needs a live agent or a network, because the transcript,
+Verification of Impeach itself: 333 Go tests at `ec824074`, green at every
+commit, plus the fixture app's 25 pytest tests, of which 3 fail on purpose.
+Those three are the seeded failures the demo checkpoint's rounding change
+causes, and a green fixture would mean the demo had nothing to find, which is
+why the number to watch there is 22 passed and 3 failed rather than 25 passed. No test needs a live agent or a network, because the transcript,
 Graph and verify outputs are replayed from committed fixtures under
 `impeach/testdata/`. The graph parsers are tested against the exact bytes the
 installed plugin emitted during the probe, so a format change surfaces as a
@@ -413,10 +416,12 @@ Mirror: `entire://aws-us-east-2.entire.io/gh/snowhiteohno/cli`, mirror ID
 `01M1TKHC7813MNVG5Y543V7P83`, status ready. Clone it with
 `git clone entire://aws-us-east-2.entire.io/gh/snowhiteohno/cli`.
 
-Twenty-six checkpoints are pushed to the fork as `refs/entire/checkpoints/**`.
-Every commit from `ab8ba0ee` onward carries its own in an `Entire-Checkpoint:`
-trailer, so the checkpoint list reads as the build log. Enumerate the whole set
-against the commits it belongs to with:
+Every commit from `ab8ba0ee` onward is checkpointed, carrying its id in an
+`Entire-Checkpoint:` trailer, so the checkpoint list reads as the build log.
+There were 31 at `ec824074`, and there is one more with every commit after it,
+which is why the count is given against a commit and the authority is the
+command rather than this sentence. Enumerate the whole set against the commits
+it belongs to with:
 
 ```
 git log --format='%h %s %(trailers:key=Entire-Checkpoint,valueonly)' 3dbdf8b..HEAD
@@ -540,9 +545,9 @@ error such as an unresolvable checkpoint.
 
 ### The two red workflows on this fork, and why they are left red
 
-The repository page shows a failing check. Two of the six workflows on the tip
-fail, both inherited from the upstream repository this is a fork of, and
-neither runs a line of Impeach code:
+The repository page shows a failing check. Three workflows fail, all three
+inherited from the upstream repository this is a fork of, and not one of them
+runs a line of Impeach code:
 
 - **E2E Tests** needs `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` and
   `OPENAI_API_KEY`. GitHub does not expose a repository's secrets to a fork,
@@ -553,15 +558,32 @@ neither runs a line of Impeach code:
 - **publish-git-remote-entire** calls `sts:AssumeRoleWithWebIdentity` against
   an AWS role owned by the upstream organisation. A fork is not authorised for
   that role, so it retries twelve times and gives up.
+- **Nightly Release** fails at `actions/create-github-app-token` with
+  "The 'client-id' (or deprecated 'app-id') input must be set to a non-empty
+  string", because the upstream GitHub App's id and key are repository secrets
+  and a fork does not receive them. It is the same missing-secrets cause as
+  E2E Tests, in a workflow that would cut a release tag.
 
-Both are structurally impossible to pass here rather than broken, and both
-would also fail on an unmodified fork of the upstream repository with no
-Impeach in it at all. The four checks that do cover this work are green:
-**Tests**, **Lint**, **License Check** and **impeach pages**.
+  **This one arrived after the section above was written**, which is worth
+  recording rather than editing away. It is triggered by a daily cron at 06:00
+  UTC, not by a push, and GitHub keeps running scheduled workflows on an active
+  fork. So a paragraph that said "two" was accurate when written and wrong
+  within a day, without anybody touching the repository. It will fail again
+  every morning.
+
+All three are structurally impossible to pass here rather than broken, and all
+three would also fail on an unmodified fork of the upstream repository with no
+Impeach in it at all. The checks that do cover this work are green: **Tests**,
+**Lint** and **License Check** on every commit, and **impeach pages** on every
+commit that touches the site or the report, which is what its path filter is
+for. It last ran green at `1bac7c70b`; a tip that changed neither of those
+paths shows no pages run at all rather than a stale green one.
 
 They are deliberately left enabled rather than disabled on the fork. Turning
-them off would produce a green page by hiding two failures, which is the exact
-move this tool exists to catch, so they stay visible and explained instead.
+them off would produce a green page by hiding three failures, which is the
+exact move this tool exists to catch, so they stay visible and explained
+instead. That reasoning covers the nightly too, even though a daily cron
+failure is the most tempting of the three to silence.
 
 ## Known limitations and next steps
 

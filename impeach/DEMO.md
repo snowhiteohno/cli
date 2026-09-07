@@ -165,8 +165,11 @@ is how this ships as a single Go binary that never imports the host CLI.
 
 ## The checkpoint evidence
 
-30 checkpoints are pushed to the fork as `refs/entire/checkpoints/**`, one for
-every commit from `ab8ba0ee` onward. Enumerate them against their commits:
+Every commit from `ab8ba0ee` onward is checkpointed, pushed to the fork under
+`refs/entire/checkpoints/**`. There were 31 at `ec824074` and the number grows
+with every commit, so read it off the repository rather than off this page.
+`demo-checkpoints.sh` counts it live for exactly that reason. Enumerate the set
+against its commits with:
 
 ```
 git log --format='%h %s %(trailers:key=Entire-Checkpoint,valueonly)' 3dbdf8b..HEAD
